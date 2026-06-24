@@ -1,73 +1,88 @@
 {
   "$schema": "https://raw.githubusercontent.com/JanDeDobbeleer/oh-my-posh/main/themes/schema.json",
-  "version": 2,
-  "final_space": true,
   "blocks": [
     {
-      "type": "prompt",
       "alignment": "left",
       "segments": [
         {
-          "type": "path",
-          "style": "powerline",
-          "powerline_symbol": "",
-          "foreground": "#ffffff",
-          "background": "#3465a4",
-          "properties": { "style": "agnoster_short", "home_icon": "~", "max_depth": 3 },
-          "template": "  {{ .Path }} "
-        },
-        {
-          "type": "git",
-          "style": "powerline",
-          "powerline_symbol": "",
-          "foreground": "#193549",
-          "background": "#95ffa4",
-          "background_templates": [
-            "{{ if or (.Working.Changed) (.Staging.Changed) }}#ffeb95{{ end }}",
-            "{{ if gt .Ahead 0 }}#C792EA{{ end }}",
-            "{{ if gt .Behind 0 }}#C792EA{{ end }}"
-          ],
-          "properties": {
-            "fetch_status": true,
-            "fetch_upstream_icon": true,
-            "branch_icon": " "
+          "foreground": "white",
+          "options": {
+            "fetch_version": false
           },
-          "template": " {{ .HEAD }}{{ if .Working.Changed }}  {{ .Working.String }}{{ end }}{{ if .Staging.Changed }}  {{ .Staging.String }}{{ end }} "
+          "style": "plain",
+          "template": "({{ if .Error }}{{ .Error }}{{ else }}{{ if .Venv }}{{ .Venv }} {{ end }}{{ .Full }}{{ end }})",
+          "type": "python"
         }
-      ]
+      ],
+      "type": "prompt"
     },
     {
-      "type": "prompt",
-      "alignment": "right",
-      "segments": [
-        {
-          "type": "executiontime",
-          "style": "plain",
-          "foreground": "#a0a0a0",
-          "properties": { "threshold": 500, "style": "round" },
-          "template": " {{ .FormattedMs }} "
-        },
-        {
-          "type": "time",
-          "style": "plain",
-          "foreground": "#a0a0a0",
-          "template": "{{ .CurrentDate | date \"15:04:05\" }} "
-        }
-      ]
-    },
-    {
-      "type": "prompt",
       "alignment": "left",
       "newline": true,
       "segments": [
         {
-          "type": "text",
+          "foreground": "lightBlue",
           "style": "plain",
-          "foreground": "#95ffa4",
-          "foreground_templates": [ "{{ if gt .Code 0 }}#ff5555{{ end }}" ],
-          "template": "❯ "
+          "template": "# ",
+          "type": "text"
+        },
+        {
+          "foreground": "red",
+          "style": "plain",
+          "template": " % ",
+          "type": "root"
+        },
+        {
+          "style": "plain",
+          "template": "<cyan>{{ .UserName }}</> <darkGray>@</> <green>{{ .HostName }}</> ",
+          "type": "session"
+        },
+        {
+          "foreground": "lightYellow",
+          "options": {
+            "style": "full"
+          },
+          "style": "plain",
+          "template": "<darkGray>in </>{{ .Path }} ",
+          "type": "path"
+        },
+        {
+          "style": "plain",
+          "template": "<darkGray>on</> <white>git:</><cyan>{{ .HEAD }}</>{{ if .Working.Changed }}<red> x</>{{ end }} ",
+          "type": "git",
+          "options": {
+            "fetch_status": true
+          }
+        },
+        {
+          "foreground": "darkGray",
+          "style": "plain",
+          "template": "[{{ .CurrentDate | date .Format }}]",
+          "type": "time"
+        },
+        {
+          "foreground": "red",
+          "style": "plain",
+          "template": " C:{{ if gt .Code 0 }}{{ .Code }}{{ end }} ",
+          "type": "status"
         }
-      ]
+      ],
+      "type": "prompt"
+    },
+    {
+      "alignment": "left",
+      "newline": true,
+      "segments": [
+        {
+          "foreground": "lightRed",
+          "style": "plain",
+          "template": "$",
+          "type": "text"
+        }
+      ],
+      "type": "prompt"
     }
-  ]
+  ],
+  "final_space": true,
+  "version": 4
 }
