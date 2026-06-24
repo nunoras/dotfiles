@@ -102,9 +102,12 @@ New-RepoSymlink "$HOME\.claude\settings.json" "$RepoRoot\claude\settings.json"
 New-RepoSymlink "$env:APPDATA\Zed\settings.json" "$RepoRoot\zed\settings.json"
 New-RepoSymlink "$env:APPDATA\Zed\keymap.json"   "$RepoRoot\zed\keymap.json"
 
-# PowerShell 7 profile
+# PowerShell 7 profile + bundled oh-my-posh theme (kept side by side so the
+# profile finds the theme via $PSScriptRoot)
 New-RepoSymlink "$HOME\Documents\PowerShell\Microsoft.PowerShell_profile.ps1" `
                 "$RepoRoot\shell\Microsoft.PowerShell_profile.ps1"
+New-RepoSymlink "$HOME\Documents\PowerShell\theme.omp.json" `
+                "$RepoRoot\shell\theme.omp.json"
 
 # Pi -- uncomment once its global config path is confirmed
 # New-RepoSymlink "$HOME\.pi\AGENTS.md" "$RepoRoot\ai\AGENTS.md"

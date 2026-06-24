@@ -2,9 +2,16 @@
 # Recreates the WSL + oh-my-zsh experience natively on Windows.
 # Every block is guarded, so it won't error if a tool isn't installed yet.
 
-# Oh My Posh — prompt theme engine (the oh-my-zsh / Powerlevel10k analog)
+# Oh My Posh — prompt theme engine (the oh-my-zsh / Powerlevel10k analog).
+# Theme is bundled next to this profile so it travels with the repo (no
+# dependency on oh-my-posh's themes folder existing on a given machine).
 if (Get-Command oh-my-posh -ErrorAction SilentlyContinue) {
-    oh-my-posh init pwsh --config "$env:POSH_THEMES_PATH\jandedobbeleer.omp.json" | Invoke-Expression
+    $theme = Join-Path $PSScriptRoot 'theme.omp.json'
+    if (Test-Path $theme) {
+        oh-my-posh init pwsh --config $theme | Invoke-Expression
+    } else {
+        oh-my-posh init pwsh | Invoke-Expression
+    }
 }
 
 # zoxide — smart directory jumping (the `z` / autojump analog). Use `z <dir>`.
@@ -18,16 +25,21 @@ if (Get-Command zoxide -ErrorAction SilentlyContinue) {
 $psrl = Get-Module -ListAvailable -Name PSReadLine | Sort-Object Version -Descending | Select-Object -First 1
 if ($psrl) {
     Import-Module PSReadLine
-    if ($psrl.Version -ge [version]'2.2.0') {
-        Set-PSReadLineOption -PredictionSource HistoryAndPlugin -PredictionViewStyle ListView
-    } elseif ($psrl.Version -ge [version]'2.1.0') {
-        Set-PSReadLineOption -PredictionSource History
-    }
+    # try/catch: predictions need an interactive VT console; ignore when the
+    # profile is loaded with redirected output (scripts, CI, capture).
+    try {
+        if ($psrl.Version -ge [version]'2.2.0') {
+            Set-PSReadLineOption -PredictionSource HistoryAndPlugin -PredictionViewStyle ListView
+        } elseif ($psrl.Version -ge [version]'2.1.0') {
+            Set-PSReadLineOption -PredictionSource History
+        }
+    } catch {}
     Set-PSReadLineKeyHandler -Key Tab -Function MenuComplete
 }
 
-# PSFzf — fuzzy history (Ctrl+r) and file picker (Ctrl+t)
-if (Get-Module -ListAvailable -Name PSFzf) {
+# PSFzf — fuzzy history (Ctrl+r) and file picker (Ctrl+t).
+# Needs the fzf binary on PATH, so only load when both are present.
+if ((Get-Module -ListAvailable -Name PSFzf) -and (Get-Command fzf -ErrorAction SilentlyContinue)) {
     Import-Module PSFzf
     Set-PsFzfOption -PSReadlineChordProvider 'Ctrl+t' -PSReadlineChordReverseHistory 'Ctrl+r'
 }
