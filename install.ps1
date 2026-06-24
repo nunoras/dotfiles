@@ -112,4 +112,12 @@ New-RepoSymlink "$HOME\Documents\PowerShell\theme.omp.json" `
 # Pi -- uncomment once its global config path is confirmed
 # New-RepoSymlink "$HOME\.pi\AGENTS.md" "$RepoRoot\ai\AGENTS.md"
 
+# --- Machine preferences ----------------------------------------------------
+# Silence the "a new PowerShell release is available" banner on every launch.
+# Must be a real env var (read at process start, before the profile applies).
+if ([Environment]::GetEnvironmentVariable('POWERSHELL_UPDATECHECK','User') -ne 'Off') {
+    [Environment]::SetEnvironmentVariable('POWERSHELL_UPDATECHECK','Off','User')
+    Write-Host "  set    POWERSHELL_UPDATECHECK=Off (user env)" -ForegroundColor Green
+}
+
 Write-Host "done." -ForegroundColor Cyan
