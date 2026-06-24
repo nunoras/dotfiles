@@ -1,0 +1,14 @@
+# Secrets & per-machine overrides — never commit these
+*.local.json
+.env
+.env.*
+secrets/
+**/credentials*
+**/token*
+
+# Backups created by install.ps1
+*.bak-*
+
+# OS / editor noise
+.DS_Store
+Thumbs.db
