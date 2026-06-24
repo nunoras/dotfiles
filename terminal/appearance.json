@@ -1,0 +1,11 @@
+{
+  "colorScheme": "One Half Dark",
+  "opacity": 90,
+  "useAcrylic": true,
+  "padding": "12",
+  "cursorShape": "bar",
+  "font": {
+    "face": "CaskaydiaCove Nerd Font",
+    "size": 12
+  }
+}
