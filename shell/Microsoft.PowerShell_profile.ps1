@@ -12,9 +12,17 @@ if (Get-Command zoxide -ErrorAction SilentlyContinue) {
     Invoke-Expression (& { (zoxide init powershell | Out-String) })
 }
 
-# PSReadLine — inline grey-text predictions (zsh-autosuggestions analog)
-if (Get-Module -ListAvailable -Name PSReadLine) {
-    Set-PSReadLineOption -PredictionSource HistoryAndPlugin -PredictionViewStyle ListView
+# PSReadLine — inline grey-text predictions (zsh-autosuggestions analog).
+# Predictions need PSReadLine 2.1+ (ships with PowerShell 7); guard so this
+# profile also loads cleanly under old Windows PowerShell 5.1 / PSReadLine 2.0.
+$psrl = Get-Module -ListAvailable -Name PSReadLine | Sort-Object Version -Descending | Select-Object -First 1
+if ($psrl) {
+    Import-Module PSReadLine
+    if ($psrl.Version -ge [version]'2.2.0') {
+        Set-PSReadLineOption -PredictionSource HistoryAndPlugin -PredictionViewStyle ListView
+    } elseif ($psrl.Version -ge [version]'2.1.0') {
+        Set-PSReadLineOption -PredictionSource History
+    }
     Set-PSReadLineKeyHandler -Key Tab -Function MenuComplete
 }
 
