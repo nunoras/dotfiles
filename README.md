@@ -44,7 +44,7 @@ dotfiles/
 | `zed/settings.json` | `%APPDATA%\Zed\settings.json` | Zed |
 | `zed/keymap.json` | `%APPDATA%\Zed\keymap.json` | Zed |
 | `shell/Microsoft.PowerShell_profile.ps1` | `~\Documents\PowerShell\…_profile.ps1` | PowerShell 7 |
-| `ai/AGENTS.md` | Pi global config | Pi (path TBC) |
+| `ai/AGENTS.md` | `~/.pi/agent/AGENTS.md` | Pi |
 
 ## Setup on a new machine
 
@@ -74,8 +74,8 @@ on its own to (re)link configs without touching apps.
 > replaces them with the repo's versions.
 
 > **Claude Code** (npm) and **Pi** (`pi.dev/install.ps1`) are both installed by
-> bootstrap. Pi's *global config* path isn't symlinked yet — that's the last
-> TODO; the COLLECT runbook will locate it on a machine that has Pi.
+> bootstrap. Pi reads its global instructions from `~/.pi/agent/AGENTS.md`, which
+> `install.ps1` symlinks to the canonical `ai/AGENTS.md` — same file as Claude.
 
 ## The native-Windows terminal stack (replaces WSL + oh-my-zsh)
 

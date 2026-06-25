@@ -203,7 +203,8 @@ New-RepoSymlink "$HOME\Documents\PowerShell\Microsoft.PowerShell_profile.ps1" `
 New-RepoSymlink "$HOME\Documents\PowerShell\theme.omp.json" `
                 "$RepoRoot\shell\theme.omp.json"
 
-# Pi -- uncomment once its global config path is confirmed
-# New-RepoSymlink "$HOME\.pi\AGENTS.md" "$RepoRoot\ai\AGENTS.md"
+# Pi -- reads a global AGENTS.md from ~/.pi/agent/AGENTS.md (per Pi docs),
+# so point it at the same canonical file Claude uses.
+New-RepoSymlink "$HOME\.pi\agent\AGENTS.md" "$RepoRoot\ai\AGENTS.md"
 
 Write-Host "done." -ForegroundColor Cyan
