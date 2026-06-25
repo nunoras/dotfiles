@@ -149,6 +149,13 @@ if ([Environment]::GetEnvironmentVariable('POWERSHELL_UPDATECHECK','User') -ne '
     Write-Host "  set    POWERSHELL_UPDATECHECK=Off (user env)" -ForegroundColor Green
 }
 
+# Enable Windows transparency effects, or terminal acrylic/opacity does nothing.
+$personalize = 'HKCU:\Software\Microsoft\Windows\CurrentVersion\Themes\Personalize'
+if ((Get-ItemProperty -Path $personalize -Name EnableTransparency -ErrorAction SilentlyContinue).EnableTransparency -ne 1) {
+    Set-ItemProperty -Path $personalize -Name EnableTransparency -Value 1
+    Write-Host "  set    Windows transparency effects = On" -ForegroundColor Green
+}
+
 # Windows Terminal look (defaults) + custom schemes + opacity keybindings
 Set-TerminalAppearance "$RepoRoot\terminal\appearance.json" `
                        "$RepoRoot\terminal\schemes.json" `
