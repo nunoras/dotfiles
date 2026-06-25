@@ -34,6 +34,7 @@ $packages = @(
     'junegunn.fzf',                # fuzzy finder
     'Git.Git',                     # git
     'GitHub.cli',                  # gh (repo + collector workflow)
+    'OpenJS.NodeJS.LTS',           # node + npm (for the Claude Code CLI)
     'ZedIndustries.Zed'            # editor
 )
 foreach ($id in $packages) {
@@ -71,11 +72,18 @@ if (Get-Command oh-my-posh -ErrorAction SilentlyContinue) {
     Write-Host "  skip  oh-my-posh not on PATH yet; in a new shell run: oh-my-posh font install CascadiaCode" -ForegroundColor Yellow
 }
 
-# --- AI CLIs (optional; install methods vary, so left manual) ----------------
-# Claude Code (via npm) -- needs Node.js:
-#   winget install --id OpenJS.NodeJS.LTS -e --accept-source-agreements --accept-package-agreements
-#   npm install -g @anthropic-ai/claude-code
-# Pi -- add its install command here once confirmed.
+# --- AI CLIs ----------------------------------------------------------------
+# Claude Code via npm (Node was installed above; npm is npm.cmd on PATH).
+Write-Host "bootstrap: installing Claude Code CLI (npm)" -ForegroundColor Cyan
+if (Get-Command npm -ErrorAction SilentlyContinue) {
+    npm install -g @anthropic-ai/claude-code
+    if ($LASTEXITCODE -eq 0) { Write-Host "  add   @anthropic-ai/claude-code" -ForegroundColor Green }
+    else { Write-Host "  fail  claude-code (npm code $LASTEXITCODE)" -ForegroundColor Yellow }
+} else {
+    Write-Host "  skip  npm not on PATH yet; in a new shell run: npm install -g @anthropic-ai/claude-code" -ForegroundColor Yellow
+}
+
+# Pi -- add its install command here once its installer/package is confirmed.
 
 # --- Link configs + apply look ----------------------------------------------
 if (-not $SkipInstall) {
