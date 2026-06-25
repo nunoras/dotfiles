@@ -203,8 +203,11 @@ New-RepoSymlink "$HOME\Documents\PowerShell\Microsoft.PowerShell_profile.ps1" `
 New-RepoSymlink "$HOME\Documents\PowerShell\theme.omp.json" `
                 "$RepoRoot\shell\theme.omp.json"
 
-# Pi -- reads a global AGENTS.md from ~/.pi/agent/AGENTS.md (per Pi docs),
-# so point it at the same canonical file Claude uses.
-New-RepoSymlink "$HOME\.pi\agent\AGENTS.md" "$RepoRoot\ai\AGENTS.md"
+# Pi -- settings, extensions, and skills are canonical in this repo.
+# AGENTS.md is shared with Claude (same canonical file).
+New-RepoSymlink "$HOME\.pi\agent\AGENTS.md"    "$RepoRoot\ai\AGENTS.md"
+New-RepoSymlink "$HOME\.pi\agent\settings.json" "$RepoRoot\pi\settings.json"
+New-RepoSymlink "$HOME\.pi\agent\extensions"    "$RepoRoot\pi\extensions"
+New-RepoSymlink "$HOME\.pi\agent\skills"        "$RepoRoot\pi\skills"
 
 Write-Host "done." -ForegroundColor Cyan

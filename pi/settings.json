@@ -1,0 +1,17 @@
+{
+  "lastChangelogVersion": "0.78.0",
+  "defaultProvider": "anthropic",
+  "defaultModel": "claude-opus-4-8",
+  "defaultThinkingLevel": "xhigh",
+  "theme": "dark",
+  "images": {
+    "blockImages": false
+  },
+  "editorPaddingX": 0,
+  "terminal": {
+    "showTerminalProgress": true
+  },
+  "packages": [
+    "npm:pi-mcp-adapter"
+  ]
+}
