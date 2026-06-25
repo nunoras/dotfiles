@@ -62,7 +62,8 @@ cd "$HOME\Documents\GitHub\dotfiles"
 
 `bootstrap.ps1` installs the software stack (pwsh, Windows Terminal, Oh My Posh,
 zoxide, fzf, git, gh, Node, Zed, the Nerd Font, PS modules, and the Claude Code
-CLI via npm) and then calls `install.ps1` to link configs and apply the look.
+CLI via npm, and Pi via its official installer) and then calls `install.ps1` to
+link configs and apply the look.
 Re-runnable and tolerant of already-installed items. Use
 `.\bootstrap.ps1 -SkipInstall` to install software only, or run `.\install.ps1`
 on its own to (re)link configs without touching apps.
@@ -72,8 +73,9 @@ on its own to (re)link configs without touching apps.
 > "follow COLLECT-FROM-THIS-MACHINE.md" — otherwise install backs them up and
 > replaces them with the repo's versions.
 
-> **Claude Code** is installed via npm (Node is installed alongside it). **Pi**
-> is still manual — add its install command in `bootstrap.ps1` once confirmed.
+> **Claude Code** (npm) and **Pi** (`pi.dev/install.ps1`) are both installed by
+> bootstrap. Pi's *global config* path isn't symlinked yet — that's the last
+> TODO; the COLLECT runbook will locate it on a machine that has Pi.
 
 ## The native-Windows terminal stack (replaces WSL + oh-my-zsh)
 

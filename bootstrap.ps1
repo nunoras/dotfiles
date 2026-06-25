@@ -83,7 +83,15 @@ if (Get-Command npm -ErrorAction SilentlyContinue) {
     Write-Host "  skip  npm not on PATH yet; in a new shell run: npm install -g @anthropic-ai/claude-code" -ForegroundColor Yellow
 }
 
-# Pi -- add its install command here once its installer/package is confirmed.
+# Pi (coding agent) -- official installer; wraps npm @earendil-works/pi-coding-agent
+# and needs Node >= 22.19 (installed above).
+Write-Host "bootstrap: installing Pi" -ForegroundColor Cyan
+try {
+    Invoke-RestMethod 'https://pi.dev/install.ps1' | Invoke-Expression
+    Write-Host "  add   pi" -ForegroundColor Green
+} catch {
+    Write-Host "  fail  pi - $($_.Exception.Message)" -ForegroundColor Yellow
+}
 
 # --- Link configs + apply look ----------------------------------------------
 if (-not $SkipInstall) {
