@@ -2,17 +2,15 @@
 //
 // For docs see: https://zed.dev/docs/configuring-zed
 {
-  // --- Added during setup: keep WSL terminal + fully disable in-editor AI ---
   "terminal": {
     "shell": {
-      "program": "wsl.exe"
+      "program": "pwsh.exe"
     },
     "toolbar": {
       "breadcrumbs": true
     }
   },
   "disable_ai": true,
-  // --- end additions ---
 
   "icon_theme": "Material Icon Theme",
   "theme": "Ayu Dark",

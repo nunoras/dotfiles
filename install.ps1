@@ -26,6 +26,16 @@ param(
 $ErrorActionPreference = 'Stop'
 $RepoRoot = $PSScriptRoot
 
+# Pause before closing when running in a standalone window (double-click / Run with PowerShell).
+# WT_SESSION is set by Windows Terminal; its absence means this is a fresh throwaway window.
+function Invoke-PauseIfStandalone {
+    if (-not $env:WT_SESSION) {
+        Write-Host "`nPress any key to close..." -NoNewline -ForegroundColor DarkGray
+        try { [Console]::ReadKey($true) | Out-Null } catch {}
+    }
+}
+trap { Write-Host "ERROR: $_" -ForegroundColor Red; Invoke-PauseIfStandalone; break }
+
 # --- Symlink helper ---------------------------------------------------------
 function New-RepoSymlink {
     param(
@@ -211,6 +221,20 @@ Set-TerminalAppearance "$RepoRoot\terminal\appearance.json" `
                        "$RepoRoot\terminal\schemes.json" `
                        "$RepoRoot\terminal\keybindings.json"
 
+# CaskaydiaCove Nerd Font (required by terminal/appearance.json)
+$fontInstalled = (Get-ItemProperty 'HKLM:\SOFTWARE\Microsoft\Windows NT\CurrentVersion\Fonts' -ErrorAction SilentlyContinue).PSObject.Properties.Name +
+                 (Get-ItemProperty 'HKCU:\SOFTWARE\Microsoft\Windows NT\CurrentVersion\Fonts' -ErrorAction SilentlyContinue).PSObject.Properties.Name |
+                 Where-Object { $_ -like '*CaskaydiaCove*' -or $_ -like '*Caskaydia Cove*' }
+if ($fontInstalled) {
+    Write-Host "  ok     CaskaydiaCove Nerd Font already installed" -ForegroundColor DarkGreen
+} elseif (Get-Command oh-my-posh -ErrorAction SilentlyContinue) {
+    Write-Host "  install CaskaydiaCove Nerd Font via oh-my-posh..." -ForegroundColor Cyan
+    oh-my-posh font install CascadiaCode
+    Write-Host "  done   CaskaydiaCove Nerd Font" -ForegroundColor Green
+} else {
+    Write-Host "  skip   CaskaydiaCove Nerd Font (oh-my-posh not found; install manually from nerdfonts.com)" -ForegroundColor Yellow
+}
+
 # --- Ensure we can create symlinks (real runs only) -------------------------
 # Probe directly; if we can't, try to enable Developer Mode (self-elevating once
 # via UAC) and probe again, so a fresh machine links in a single pass instead of
@@ -234,6 +258,7 @@ if (-not $WhatIfLinks) {
             Write-Host "  2) Or run this script from an elevated 'Run as administrator' PowerShell." -ForegroundColor Yellow
         }
         Write-Host ""
+        Invoke-PauseIfStandalone
         return
     }
 }
@@ -266,3 +291,4 @@ New-RepoSymlink "$HOME\.pi\agent\extensions"    "$RepoRoot\pi\extensions"
 New-RepoSymlink "$HOME\.pi\agent\skills"        "$RepoRoot\pi\skills"
 
 Write-Host "done." -ForegroundColor Cyan
+Invoke-PauseIfStandalone
