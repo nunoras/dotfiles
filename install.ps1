@@ -78,7 +78,8 @@ function New-RepoSymlink {
 function Set-TerminalAppearance {
     param(
         [Parameter(Mandatory)] [string]$AppearanceFile,
-        [string]$SchemesFile
+        [string]$SchemesFile,
+        [string]$KeybindingsFile
     )
 
     if (-not (Test-Path $AppearanceFile)) { return }
@@ -118,6 +119,17 @@ function Set-TerminalAppearance {
         $settings | Add-Member -NotePropertyName schemes -NotePropertyValue $merged -Force
     }
 
+    # Merge keybindings by their key chord (so custom binds travel along)
+    if ($KeybindingsFile -and (Test-Path $KeybindingsFile)) {
+        $ourBinds = @(Get-Content $KeybindingsFile -Raw | ConvertFrom-Json)
+        $merged = @($settings.keybindings | Where-Object { $_ })
+        foreach ($kb in $ourBinds) {
+            $merged = @($merged | Where-Object { $_.keys -ne $kb.keys })
+            $merged += $kb
+        }
+        $settings | Add-Member -NotePropertyName keybindings -NotePropertyValue $merged -Force
+    }
+
     if ($WhatIfLinks) {
         Write-Host "  WOULD  apply Windows Terminal appearance + schemes -> $settingsPath" -ForegroundColor Yellow
         return
@@ -137,8 +149,10 @@ if ([Environment]::GetEnvironmentVariable('POWERSHELL_UPDATECHECK','User') -ne '
     Write-Host "  set    POWERSHELL_UPDATECHECK=Off (user env)" -ForegroundColor Green
 }
 
-# Windows Terminal look (scheme, opacity, font, padding, cursor) + custom schemes
-Set-TerminalAppearance "$RepoRoot\terminal\appearance.json" "$RepoRoot\terminal\schemes.json"
+# Windows Terminal look (defaults) + custom schemes + opacity keybindings
+Set-TerminalAppearance "$RepoRoot\terminal\appearance.json" `
+                       "$RepoRoot\terminal\schemes.json" `
+                       "$RepoRoot\terminal\keybindings.json"
 
 # --- Symlink capability check -----------------------------------------------
 # Symlinks on Windows need EITHER Developer Mode ON or an elevated shell.

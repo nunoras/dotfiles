@@ -1,0 +1,4 @@
+[
+  { "command": { "action": "adjustOpacity", "relative": true, "opacity": 10 }, "keys": "ctrl+shift+o" },
+  { "command": { "action": "adjustOpacity", "relative": true, "opacity": -10 }, "keys": "ctrl+shift+i" }
+]
