@@ -53,17 +53,18 @@ dotfiles/
 git clone https://github.com/nunoras/dotfiles "$HOME\Documents\GitHub\dotfiles"
 cd "$HOME\Documents\GitHub\dotfiles"
 
-# 2. Turn on Developer Mode once so symlinks don't need admin:
-#    Settings > Privacy & security > For developers > Developer Mode = On
-
-# 3. Install the apps/tools AND link the configs in one go:
+# 2. Install the apps/tools AND link the configs in one go:
 .\bootstrap.ps1          # winget + modules + font, then runs install.ps1
+#    Accept the UAC prompt: install.ps1 enables Developer Mode once so the
+#    config symlinks can be created without admin (now and on every re-run).
 ```
 
 `bootstrap.ps1` installs the software stack (pwsh, Windows Terminal, Oh My Posh,
 zoxide, fzf, git, gh, Node, Zed, the Nerd Font, PS modules, and the Claude Code
 CLI via npm, and Pi via its official installer) and then calls `install.ps1` to
 link configs and apply the look.
+`install.ps1` enables Developer Mode the first time (one UAC prompt) so the
+symlinks don't need admin, here or on any later re-run.
 Re-runnable and tolerant of already-installed items. Use
 `.\bootstrap.ps1 -SkipInstall` to install software only, or run `.\install.ps1`
 on its own to (re)link configs without touching apps.
