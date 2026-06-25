@@ -9,6 +9,9 @@
     Tolerant: a failure on one item is reported; the rest continue.
     Runs fine from stock Windows PowerShell 5.1.
 
+    Calls install.ps1 at the end, which enables Developer Mode (one UAC prompt
+    the first time) so the config symlinks can be created without admin.
+
 .PARAMETER SkipInstall
     Install software only; don't run install.ps1 (config linking) at the end.
 #>
@@ -94,6 +97,8 @@ try {
 }
 
 # --- Link configs + apply look ----------------------------------------------
+# install.ps1 enables Developer Mode (one UAC prompt) if needed, then symlinks
+# the configs into place.
 if (-not $SkipInstall) {
     Write-Host "`nbootstrap: running install.ps1" -ForegroundColor Cyan
     & "$RepoRoot\install.ps1"

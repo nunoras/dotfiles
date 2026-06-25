@@ -139,6 +139,56 @@ function Set-TerminalAppearance {
     Write-Host "  apply  Windows Terminal appearance + schemes -> defaults" -ForegroundColor Green
 }
 
+# --- Symlink capability -----------------------------------------------------
+# Symlinks on Windows need EITHER Developer Mode ON or an elevated shell.
+$DevModeKey  = 'HKLM:\SOFTWARE\Microsoft\Windows\CurrentVersion\AppModelUnlock'
+$DevModeName = 'AllowDevelopmentWithoutDevLicense'
+
+function Test-CanSymlink {
+    $src  = Join-Path $env:TEMP "dotfiles_probe_$PID.src"
+    $link = Join-Path $env:TEMP "dotfiles_probe_$PID.lnk"
+    Set-Content -Path $src -Value '' -Force
+    Remove-Item $link -Force -ErrorAction SilentlyContinue
+    $ok = $false
+    try { New-Item -ItemType SymbolicLink -Path $link -Target $src -ErrorAction Stop | Out-Null; $ok = $true } catch {}
+    Remove-Item $link, $src -Force -ErrorAction SilentlyContinue
+    return $ok
+}
+
+function Test-DeveloperMode {
+    (Get-ItemProperty -Path $DevModeKey -Name $DevModeName -ErrorAction SilentlyContinue).$DevModeName -eq 1
+}
+
+# Turn Developer Mode on so symlinks never need admin again. Writing the HKLM
+# flag itself needs admin, so when we're not elevated we self-elevate a single
+# scoped command (one UAC prompt). Idempotent and best-effort: declining the
+# prompt just leaves the caller on the manual-guidance fallback below.
+function Enable-DeveloperMode {
+    if (Test-DeveloperMode) {
+        Write-Host "  ok     Developer Mode already on" -ForegroundColor DarkGreen
+        return
+    }
+
+    $isAdmin = ([Security.Principal.WindowsPrincipal][Security.Principal.WindowsIdentity]::GetCurrent()).IsInRole([Security.Principal.WindowsBuiltInRole]::Administrator)
+    if ($isAdmin) {
+        New-Item -Path $DevModeKey -Force | Out-Null
+        Set-ItemProperty -Path $DevModeKey -Name $DevModeName -Value 1 -Type DWord -Force
+        Write-Host "  set    Developer Mode = On" -ForegroundColor Green
+        return
+    }
+
+    Write-Host "  Developer Mode is off; requesting elevation to enable it (accept the UAC prompt)..." -ForegroundColor Yellow
+    $elevatedCmd = "New-Item -Path '$DevModeKey' -Force | Out-Null; " +
+                   "Set-ItemProperty -Path '$DevModeKey' -Name '$DevModeName' -Value 1 -Type DWord -Force"
+    try {
+        $psExe = (Get-Process -Id $PID).Path     # current powershell/pwsh host
+        Start-Process -FilePath $psExe -Verb RunAs -Wait `
+            -ArgumentList '-NoProfile','-Command',$elevatedCmd
+    } catch {
+        Write-Host "  skip   couldn't elevate ($($_.Exception.Message))" -ForegroundColor Yellow
+    }
+}
+
 # --- Machine preferences (always run; no symlink/admin needed) ---------------
 Write-Host "dotfiles: applying machine preferences" -ForegroundColor Cyan
 
@@ -161,26 +211,31 @@ Set-TerminalAppearance "$RepoRoot\terminal\appearance.json" `
                        "$RepoRoot\terminal\schemes.json" `
                        "$RepoRoot\terminal\keybindings.json"
 
-# --- Symlink capability check -----------------------------------------------
-# Symlinks on Windows need EITHER Developer Mode ON or an elevated shell.
-# Probe it directly so we fail with clear guidance instead of half-linking.
-$probeSrc  = Join-Path $env:TEMP "dotfiles_probe_$PID.src"
-$probeLink = Join-Path $env:TEMP "dotfiles_probe_$PID.lnk"
-Set-Content -Path $probeSrc -Value '' -Force
-Remove-Item $probeLink -Force -ErrorAction SilentlyContinue
-$canSymlink = $false
-try { New-Item -ItemType SymbolicLink -Path $probeLink -Target $probeSrc -ErrorAction Stop | Out-Null; $canSymlink = $true } catch {}
-Remove-Item $probeLink, $probeSrc -Force -ErrorAction SilentlyContinue
+# --- Ensure we can create symlinks (real runs only) -------------------------
+# Probe directly; if we can't, try to enable Developer Mode (self-elevating once
+# via UAC) and probe again, so a fresh machine links in a single pass instead of
+# failing with manual guidance.
+if (-not $WhatIfLinks) {
+    Write-Host "dotfiles: checking symlink capability" -ForegroundColor Cyan
+    if (-not (Test-CanSymlink)) { Enable-DeveloperMode }
 
-if (-not $canSymlink) {
-    Write-Host ""
-    Write-Host "Machine preferences applied. Skipping symlinks - can't create them yet." -ForegroundColor Yellow
-    Write-Host "Do ONE of these, then re-run install.ps1 to link configs:" -ForegroundColor Yellow
-    Write-Host "  1) Enable Developer Mode (one-time, no admin needed afterwards):" -ForegroundColor Yellow
-    Write-Host "       Settings > Privacy & security > For developers > Developer Mode = On" -ForegroundColor Gray
-    Write-Host "  2) Or run this script from an elevated 'Run as administrator' PowerShell." -ForegroundColor Yellow
-    Write-Host ""
-    return
+    if (-not (Test-CanSymlink)) {
+        Write-Host ""
+        if (Test-DeveloperMode) {
+            # Dev Mode is on now, but this shell started before it took effect;
+            # a fresh process picks it up, so just re-run -- no manual toggle.
+            Write-Host "Developer Mode is on now, but this shell started before that took effect." -ForegroundColor Yellow
+            Write-Host "Open a new PowerShell and re-run install.ps1 to link configs." -ForegroundColor Yellow
+        } else {
+            Write-Host "Machine preferences applied. Skipping symlinks - can't create them yet." -ForegroundColor Yellow
+            Write-Host "Do ONE of these, then re-run install.ps1 to link configs:" -ForegroundColor Yellow
+            Write-Host "  1) Enable Developer Mode (one-time, no admin needed afterwards):" -ForegroundColor Yellow
+            Write-Host "       Settings > Privacy & security > For developers > Developer Mode = On" -ForegroundColor Gray
+            Write-Host "  2) Or run this script from an elevated 'Run as administrator' PowerShell." -ForegroundColor Yellow
+        }
+        Write-Host ""
+        return
+    }
 }
 
 # --- Link map ---------------------------------------------------------------
