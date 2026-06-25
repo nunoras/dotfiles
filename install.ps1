@@ -76,7 +76,10 @@ function New-RepoSymlink {
 # own profile list (so per-machine profiles like conda/VS survive). We can't
 # symlink settings.json because Windows Terminal rewrites it atomically.
 function Set-TerminalAppearance {
-    param([Parameter(Mandatory)] [string]$AppearanceFile)
+    param(
+        [Parameter(Mandatory)] [string]$AppearanceFile,
+        [string]$SchemesFile
+    )
 
     if (-not (Test-Path $AppearanceFile)) { return }
 
@@ -104,13 +107,24 @@ function Set-TerminalAppearance {
         $settings.profiles.defaults | Add-Member -NotePropertyName $prop.Name -NotePropertyValue $prop.Value -Force
     }
 
+    # Merge custom color schemes by name (so non-built-in schemes travel along)
+    if ($SchemesFile -and (Test-Path $SchemesFile)) {
+        $ourSchemes = @(Get-Content $SchemesFile -Raw | ConvertFrom-Json)
+        $merged = @($settings.schemes | Where-Object { $_ })
+        foreach ($sc in $ourSchemes) {
+            $merged = @($merged | Where-Object { $_.name -ne $sc.name })
+            $merged += $sc
+        }
+        $settings | Add-Member -NotePropertyName schemes -NotePropertyValue $merged -Force
+    }
+
     if ($WhatIfLinks) {
-        Write-Host "  WOULD  apply Windows Terminal appearance -> $settingsPath" -ForegroundColor Yellow
+        Write-Host "  WOULD  apply Windows Terminal appearance + schemes -> $settingsPath" -ForegroundColor Yellow
         return
     }
 
     $settings | ConvertTo-Json -Depth 32 | Set-Content -Path $settingsPath -Encoding UTF8
-    Write-Host "  apply  Windows Terminal appearance -> defaults" -ForegroundColor Green
+    Write-Host "  apply  Windows Terminal appearance + schemes -> defaults" -ForegroundColor Green
 }
 
 # --- Machine preferences (always run; no symlink/admin needed) ---------------
@@ -123,8 +137,8 @@ if ([Environment]::GetEnvironmentVariable('POWERSHELL_UPDATECHECK','User') -ne '
     Write-Host "  set    POWERSHELL_UPDATECHECK=Off (user env)" -ForegroundColor Green
 }
 
-# Windows Terminal look (scheme, opacity, font, padding, cursor)
-Set-TerminalAppearance "$RepoRoot\terminal\appearance.json"
+# Windows Terminal look (scheme, opacity, font, padding, cursor) + custom schemes
+Set-TerminalAppearance "$RepoRoot\terminal\appearance.json" "$RepoRoot\terminal\schemes.json"
 
 # --- Symlink capability check -----------------------------------------------
 # Symlinks on Windows need EITHER Developer Mode ON or an elevated shell.
