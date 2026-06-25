@@ -53,19 +53,26 @@ dotfiles/
 git clone https://github.com/nunoras/dotfiles "$HOME\Documents\GitHub\dotfiles"
 cd "$HOME\Documents\GitHub\dotfiles"
 
-# 2. (optional) pull this machine's existing configs into the repo first
-#    Open Claude Code here and say: "follow COLLECT-FROM-THIS-MACHINE.md"
-
-# 3. Turn on Developer Mode once so symlinks don't need admin:
+# 2. Turn on Developer Mode once so symlinks don't need admin:
 #    Settings > Privacy & security > For developers > Developer Mode = On
 
-# 4. Link everything into place
-.\install.ps1            # add -WhatIfLinks to preview without changing anything
+# 3. Install the apps/tools AND link the configs in one go:
+.\bootstrap.ps1          # winget + modules + font, then runs install.ps1
 ```
 
+`bootstrap.ps1` installs the software stack (pwsh, Windows Terminal, Oh My Posh,
+zoxide, fzf, git, gh, Zed, the Nerd Font, PS modules) and then calls
+`install.ps1` to link configs and apply the look. Re-runnable and tolerant of
+already-installed items. Use `.\bootstrap.ps1 -SkipInstall` to install software
+only, or run `.\install.ps1` on its own to (re)link configs without touching apps.
+
 > **Order matters:** if a machine already has configs you care about, run the
-> COLLECT runbook *before* `install.ps1` — otherwise install will back them up and
-> replace them with the repo's versions.
+> COLLECT runbook *before* linking — open Claude Code in the repo and say
+> "follow COLLECT-FROM-THIS-MACHINE.md" — otherwise install backs them up and
+> replaces them with the repo's versions.
+
+> **AI CLIs** (Claude Code, Pi) aren't auto-installed — their install methods
+> vary. See the commented section at the bottom of `bootstrap.ps1`.
 
 ## The native-Windows terminal stack (replaces WSL + oh-my-zsh)
 
