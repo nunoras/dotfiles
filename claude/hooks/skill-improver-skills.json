@@ -1,0 +1,8 @@
+{
+  "_comment": "Skills the skill-improver auto-loop reviews. The Stop hook only forces a review turn when one of these skills was used. Edit this list as you start/stop iterating on a skill. Empty array = review nothing (pause the loop without deleting it). Delete this file = review every skill. The SKILL_IMPROVER_SKILLS env var (comma-separated) overrides this file. skill-improver itself is always excluded.",
+  "skills": [
+    "orchestrator",
+    "orchestrator-fork",
+    "design-orchestrator"
+  ]
+}
