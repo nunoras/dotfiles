@@ -2,6 +2,7 @@
 //
 // For docs see: https://zed.dev/docs/configuring-zed
 {
+  "cli_default_open_behavior": "existing_window",
   "terminal": {
     "shell": {
       "program": "pwsh.exe"

@@ -1,0 +1,204 @@
+# Agent Prompt Templates
+
+Use these templates when launching subagents in Claude Code, Codex CLI, or another agent runner. Fill every bracketed field before launching.
+
+## Invocation Patterns
+
+**Claude agent (via Agent tool):**
+Pass `model` and `effort` matching the tier from the Model Selection table in the orchestrator skill.
+Valid models: `haiku`, `sonnet`, `opus`. Valid effort: `low`, `medium`, `high`, `xhigh`.
+Always spawn tiered agents as a fresh `Agent` call (default `subagent_type`, i.e. a new general-purpose agent) with an explicit `model:`. **Never spawn a tiered agent with `subagent_type: "fork"` - a fork ignores `model:` and inherits the coordinator's model, so a `haiku` or `sonnet` tier silently runs on the coordinator's (expensive) model.** Forks are only for the coordinator itself (see `/orchestrator-fork`).
+
+**Codex reviewer (via Bash tool):**
+
+Write the prompt to a temp file first to avoid shell quoting issues, then invoke with
+`codex exec` (non-interactive). NOTE: the bare `codex "<prompt>"` form launches Codex's
+interactive TUI and will HANG in an agent Bash context - always use `codex exec`. Pass
+`-s read-only` so the reviewer cannot stall on an approval prompt for a write/exec
+command, and `-o <file>` to capture the final review message. For a long gate review,
+run it in the background.
+
+```bash
+cat > .agents/backlog/_codex-prompt.md << 'PROMPT'
+[full reviewer prompt here]
+PROMPT
+codex exec -m gpt-5.5 -c 'model_reasoning_effort="high"' -s read-only \
+  -o .agents/backlog/agents/<date>-<topic>-review.md \
+  "$(cat .agents/backlog/_codex-prompt.md)"
+```
+
+For gate reviews use `xhigh`:
+```bash
+codex exec -m gpt-5.5 -c 'model_reasoning_effort="xhigh"' -s read-only \
+  -o .agents/backlog/agents/<date>-<topic>-review.md \
+  "$(cat .agents/backlog/_codex-prompt.md)"
+```
+
+Delete `.agents/backlog/_codex-prompt.md` after the run completes.
+
+When you run the review in the background, the harness captures Codex's raw
+stdout/stderr to `<name>.stdout.log` / `<name>.stderr.log` (a gate review's
+stderr can be megabytes). Those dumps, the `_codex-prompt.md` temp file, and any
+dev-server logs under `.agents/backlog/` are scratch: gitignore them and never
+let a `git add -A` sweep them into a phase commit or PR. Only the `-o` review
+`.md` file under `agents/` is durable and gets committed.
+
+## Implementation Agent
+
+```text
+You are an implementation agent for the mix-notes project.
+
+Mission:
+Implement [phase/task name] from [spec path], scoped to [sections].
+
+Context discipline:
+- Trust the orchestrator's briefing below. Do not read INDEX.md.
+- Read .agents/backlog/CURRENT_STATE.md only if you need to verify a specific detail not covered in the briefing.
+- Read .agents/backlog/human-notes.md only if the orchestrator explicitly cites open notes below.
+- Read only the spec slice and files listed under Required inputs.
+- Do not start the next phase.
+
+Required inputs:
+- Spec slice: [path to phases/phase-XX-spec-slice.md, or inline the relevant sections]
+- Phase detail file: [path to phases/phase-XX-detail.md]
+- Human notes: [none, or paste relevant entries from .agents/backlog/human-notes.md]
+- Relevant files/directories: [paths]
+- Global constraints: [stack/design/auth/storage/testing notes]
+
+Deliverables:
+- Implement the assigned task.
+- Update the relevant phase file.
+- Create or update .agents/backlog/agents/[date]-phase-[xx]-[topic]-implementation.md.
+- Update .agents/backlog/INDEX.md and CURRENT_STATE.md.
+- Do not edit backlog.md (tasks-axi); the orchestrator records task and gate state.
+
+Handoff format:
+## Mission
+## Summary
+## Files Changed
+## Checklist Status
+## Commands Run
+## Decisions
+## Risks / Follow-Ups
+## Suggested Next Agent Prompt
+
+Stop after reporting your handoff.
+```
+
+## Reviewer Agent
+
+Run via Codex CLI (gpt-5.5 high / xhigh at gate). See Invocation Patterns above.
+
+```text
+You are an independent reviewer for the mix-notes project.
+
+Mission:
+Review [phase/task name] implementation against the spec slice and the project backlog.
+
+Review stance:
+- Do not trust the implementation handoff.
+- Do not read INDEX.md. Trust the orchestrator's briefing below.
+- Inspect the diff, changed files, tests, and the spec slice directly.
+- Look for correctness bugs, missing tests, spec drift, design-system drift, auth/storage mistakes, data model issues, accessibility problems, reduced-motion issues, and integration risks.
+- Prefer actionable findings with file and line references.
+- Do not implement fixes unless explicitly instructed.
+
+Required inputs:
+- Spec slice: [path to phases/phase-XX-spec-slice.md, or inline the relevant sections]
+- Implementation log: [path]
+- Phase detail file: [path to phases/phase-XX-detail.md]
+- Human notes: [none, or paste relevant entries from .agents/backlog/human-notes.md]
+- Changed files or diff command: [paths/command]
+
+Output:
+- Create .agents/backlog/agents/[date]-phase-[xx]-[topic]-review.md.
+- Update the phase file's Review Findings section.
+- Update INDEX.md and CURRENT_STATE.md.
+
+Finding format:
+- Severity: blocking | non-blocking
+- File/line:
+- Issue:
+- Why it matters:
+- Suggested fix:
+
+Finish with one of:
+- PASS: no blocking findings
+- PASS WITH RISKS: no blockers, but carryover exists
+- FAIL: blocking findings require fixes
+```
+
+## Fix Agent
+
+```text
+You are a fix agent for the mix-notes project.
+
+Mission:
+Fix the blocking findings from [review log path] for [phase/task name].
+
+Rules:
+- Do not read INDEX.md. Trust the orchestrator's briefing below.
+- Read the review log, phase detail file, and directly affected source files only.
+- Read .agents/backlog/human-notes.md only if the orchestrator explicitly cites open notes.
+- Fix only the listed findings unless a nearby issue blocks the fix.
+- Update tests or validation where appropriate.
+- Update .agents/backlog/agents/[date]-phase-[xx]-[topic]-fixes.md.
+- Update the phase detail file and CURRENT_STATE.md.
+- Do not edit backlog.md (tasks-axi); the orchestrator records task and gate state.
+
+Report:
+## Fixed Findings
+## Files Changed
+## Commands Run
+## Remaining Risks
+## Suggested Next Agent Prompt
+```
+
+## Validation Agent
+
+```text
+You are a validation agent for the mix-notes project.
+
+Mission:
+Run the validation commands for [phase/task name] and write the results to .agents/backlog/CURRENT_STATE.md.
+
+Rules:
+- Run only the commands listed below. Do not read the spec or source files unless a command fails and you need to diagnose why.
+- Write a one-line pass/fail per command to CURRENT_STATE.md under "Validation Status".
+- If a command fails, append the first 20 lines of output as evidence.
+- Do not fix failures. Report them and stop.
+
+Commands to run:
+[list commands, e.g. pnpm --filter web typecheck, pnpm --filter web build, pytest]
+
+Stop after writing results to CURRENT_STATE.md.
+```
+
+## Resume Agent
+
+```text
+Use $orchestrator to resume the implementation from [spec path].
+
+Start by reading:
+- .agents/backlog/CURRENT_STATE.md
+- .agents/backlog/human-notes.md if present
+- git status
+
+Only read INDEX.md if CURRENT_STATE.md does not clearly identify the next action.
+
+Identify:
+- active phase
+- last agent log
+- unresolved blocking findings
+- unresolved human notes
+- next smallest safe task
+
+Continue from the backlog state. Do not assume prior chat context exists.
+```
+
+## Note on "Suggested Next Agent Prompt"
+
+Every agent log ends with a "Suggested Next Agent Prompt" section.
+Treat this as a hint, not a directive.
+The orchestrator must generate the actual next agent prompt from `CURRENT_STATE.md` and the active phase plan.
+Subagent suggestions can drift from the spec or overstate scope - always verify against the backlog before using them.

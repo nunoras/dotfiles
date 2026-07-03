@@ -1,0 +1,252 @@
+# Backlog Schema
+
+Use `.agents/backlog/` as the durable memory for long-running orchestration. Optimize every file for AI scanning: put summary, status, and read triggers at the top; keep details below.
+
+## Task Store (backlog.md)
+
+`backlog.md` is the canonical, machine-maintained store for phase/task state, gate progress, and dependencies. It is driven by tasks-axi (`npx -y tasks-axi`); never hand-edit it. Config is `.tasks.toml` at the repo root (`path = ".agents/backlog/backlog.md"`).
+
+Structure (tasks-axi sections):
+- `## In flight` - active phases/tasks.
+- `## Queued` - not yet started.
+- `## Done` - closed (rendered `- [x]`).
+
+Task line (machine-managed by tasks-axi - do not author by hand; this is what it renders):
+
+```
+- [ ] phase-09-audio-engine - Phase 9 - Audio engine spike blocked-by: phase-08-design-pass (kind: ship) (priority: 1) (since 2026-06-27)
+  Gate: [ ] impl handoff  [ ] independent review  [ ] blocking fixed  [ ] validations  [ ] handoff
+  Detail: phases/phase-09-audio-engine-detail.md
+```
+
+Format notes: `- [ ] <id> - <title> [blocked-by: <id>] (tags)`; body lines indent two spaces; done tasks render `- [x] <id> - <title> (done <date>)`. Add via `tasks-axi add <id> "<title>" --kind ship`, body via `tasks-axi update <id> --append "..."`, dependency via `tasks-axi block <id> --by <other>`.
+
+Conventions:
+- One task per phase, `kind: ship`. Phase ordering via `blocked-by` (phase N+1 blocked-by phase N).
+- The gate checklist lives in the task body; update it with `tasks-axi update <id> --append`, close with `tasks-axi done <id>`.
+- The orchestrator is the only writer. Subagents write prose logs and `CURRENT_STATE.md`; they never call tasks-axi.
+- Do not duplicate task or gate state into `INDEX.md` or phase files - those hold routing and narrative only.
+
+## Directory
+
+```text
+.agents/
+  backlog/
+    backlog.md                           ← tasks-axi task/phase/gate state (canonical; never hand-edit)
+    INDEX.md                             ← routing index (pointers + read-triggers; no task state)
+    CURRENT_STATE.md
+    human-notes.md
+    decisions.md
+    risks.md
+    phases/
+      phase-01-foundation-detail.md      ← history, findings, decisions (read on demand)
+      phase-01-foundation-spec-slice.md  ← extracted spec sections for this phase
+    agents/
+      YYYY-MM-DD-phase-XX-topic-implementation.md
+      YYYY-MM-DD-phase-XX-topic-review.md
+    handoffs/
+      phase-XX-to-phase-YY.md
+```
+
+## INDEX.md
+
+Purpose: route agents to the right context without requiring full-log reads.
+
+```md
+# Backlog Index
+
+> Task/phase/gate state lives in the tasks-axi backlog (`backlog.md`). Run `npx -y tasks-axi`. This file is routing only.
+
+## Read First
+- CURRENT_STATE.md: latest orchestration status and next action.
+- human-notes.md: human feedback copied or summarized from Lavish/lavis-axi.
+- phases/phase-XX-name.md: active phase checklist and gate status.
+
+## Phase Files
+- phases/phase-01-foundation-detail.md — history and findings; read when auditing or reviewing
+- phases/phase-01-foundation-spec-slice.md — extracted spec; pass to subagents instead of the full spec
+
+## Agent Logs
+- agents/YYYY-MM-DD-phase-XX-topic-implementation.md
+  Summary:
+  Read when:
+
+## Handoffs
+- handoffs/phase-XX-to-phase-YY.md
+  Summary:
+  Read when:
+```
+
+## CURRENT_STATE.md
+
+Purpose: make resuming possible after context loss.
+
+```md
+# Current State
+
+## Snapshot
+- Updated:
+- Active spec:
+- Active phase:
+- Current gate:
+- Last agent:
+- Last reviewer:
+
+## Next Action
+
+## Completed
+
+## Open Findings
+
+## Blockers
+
+## Validation Status
+
+## Context Notes
+```
+
+## Human Notes
+
+Purpose: preserve human notes from Lavish/lavis-axi or the local fallback so agents can act on them without reading chat history.
+
+```md
+# Human Notes
+
+## Open Notes
+- [ ] YYYY-MM-DD HH:MM Source/Author: short summary
+
+## Log
+
+### YYYY-MM-DD HH:MM Source/Author
+- Source id/link:
+- Note:
+- Interpretation:
+- Action:
+- Status: open | applied | declined | needs-clarification
+```
+
+## Phase Files
+
+The per-phase checklist and gate status live in the tasks-axi task body (see `## Task Store (backlog.md)`). Each phase keeps two prose files: a detail file and a spec-slice file.
+
+### phase-XX-name-detail.md
+
+Purpose: history, findings, decisions. Read on demand - not every loop.
+
+```md
+# Phase XX: Name — Detail
+
+## Summary
+
+## Spec Source
+- File:
+- Sections:
+- Global constraints:
+
+## Files In Scope
+
+## Validation Plan
+
+## Validation Results
+
+## Review Findings
+- Blocking:
+- Non-blocking:
+
+## Decisions
+
+## Risks / Carryover
+```
+
+### phase-XX-name-spec-slice.md
+
+Purpose: extracted spec sections for this phase. Subagents read this instead of navigating the full HTML spec.
+Created by the orchestrator at phase-start. Update only if the spec is amended mid-phase.
+
+```md
+# Phase XX Spec Slice
+
+Extracted from [spec path] on [date].
+Sections: [list]
+
+[pasted spec content — keep only what is relevant to this phase]
+
+## Global Constraints
+
+[paste the stack/design/auth/storage constraints that apply to this phase]
+```
+
+## Agent Log
+
+Purpose: make every subagent's work auditable.
+
+```md
+# Agent Log: Phase XX Topic
+
+## Mission
+
+## Summary
+
+## Files Changed
+- path: reason
+
+## Checklist Status
+- [x] completed
+- [ ] not completed: reason
+
+## Commands Run
+- command: result
+
+## Decisions
+- decision: reason
+
+## Risks / Follow-Ups
+- risk: impact / next step
+
+## Suggested Next Agent Prompt
+```
+
+## Handoff
+
+Purpose: give the next phase a compact starting point.
+
+```md
+# Handoff: Phase XX to Phase YY
+
+## Completed Phase
+
+## What Changed
+
+## Validations
+
+## Open Risks
+
+## Decisions That Affect Next Phase
+
+## Files The Next Agent Should Read
+
+## Suggested Next Prompt
+```
+
+## Maintenance Rules
+
+- Mutate task/phase/gate state only through tasks-axi (`npx -y tasks-axi`); never hand-edit `backlog.md`.
+- Update `INDEX.md` whenever adding an agent log, phase file, or handoff.
+- Update `CURRENT_STATE.md` after each agent completes and after each gate decision.
+- Update `human-notes.md` whenever Lavish/lavis-axi contains new actionable human notes.
+- Move durable facts out of chat and into backlog.
+- Keep logs factual. Do not include private chain-of-thought or speculative narration.
+- Prefer short summaries with read triggers over long prose.
+
+## Archive Convention
+
+When a phase gate closes, mark all agent logs for that phase as archived in `INDEX.md`:
+
+```md
+- `agents/YYYY-MM-DD-phase-XX-topic-implementation.md` [archived]
+  Summary: one-line summary
+  Read when: auditing closed phase XX only
+```
+
+The orchestrator must skip `[archived]` entries during its normal loop.
+Only read archived logs when explicitly auditing a closed phase.
