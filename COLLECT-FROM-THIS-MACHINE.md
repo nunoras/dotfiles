@@ -33,6 +33,13 @@ things that **actually exist** become options.
 | 9 | Shell — PowerShell profile | `~\Documents\PowerShell\Microsoft.PowerShell_profile.ps1` | — |
 | 10 | Shell — zsh / oh-my-zsh | — | `~/.zshrc`, `~/.oh-my-zsh/custom/` |
 | 11 | Oh My Posh theme | `$env:POSH_THEMES_PATH` / custom `.omp.json` | `~/.config/ohmyposh/` |
+| 12 | Claude - status line | `~\.claude\statusline-*.ps1` | `~/.claude/statusline-*` |
+| 13 | Claude - hooks | `~\.claude\hooks\` | `~/.claude/hooks/` |
+| 14 | Herdr - config | `%APPDATA%\herdr\config.toml` | `~/.config/herdr/config.toml` |
+
+Only collect hooks (#13) that `settings.json` actually references. The rest are
+dropped there by other tools (plugin self-healers and the like) and are not ours
+to carry between machines.
 
 For Pi (#8), if you can't find the config, run the Pi CLI's help/version or check
 its docs to locate where it stores global config, then report what you found.
@@ -62,7 +69,10 @@ Preserve subfolder structure for directories.
 | Item | Repo destination |
 |---|---|
 | Claude system prompt (`CLAUDE.md`) | `ai/AGENTS.md` — **but** if the repo's `ai/AGENTS.md` already has real content, do NOT blindly overwrite. Show a diff and ask whether to replace, merge, or skip. |
-| Claude settings | `claude/settings.json` |
+| Claude settings | `claude/settings.json` - rewrite any `C:\Users\<name>\...` path inside it as `$HOME/...`, so the file stays usable on machines with a different username |
+| Claude status line | `claude/statusline-rich.ps1` |
+| Claude hooks | `claude/hooks/` |
+| Herdr config | `herdr/config.toml` |
 | Claude skills | `ai/skills/` |
 | Claude subagents | `ai/agents/` |
 | Claude commands | `claude/commands/` |

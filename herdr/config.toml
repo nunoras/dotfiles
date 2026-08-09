@@ -1,0 +1,28 @@
+onboarding = false
+[update]
+channel = "preview"
+
+[keys]
+new_tab = "ctrl+shift+n"
+split_vertical = "ctrl+n"
+split_horizontal = "ctrl+shift+h"
+cycle_pane_previous = "alt+left"
+cycle_pane_next = "alt+right"
+previous_tab = "ctrl+alt+left"
+next_tab = "ctrl+alt+right"
+close_pane = "ctrl+w"
+zoom = "ctrl+shift+z"
+toggle_sidebar = "ctrl+shift+b"
+
+[ui]
+agent_panel_sort = "spaces"
+hide_tab_bar_when_single_tab = true
+pane_gaps = false
+prompt_new_tab_name = false
+sidebar_collapsed_mode = "hidden"
+show_agent_labels_on_pane_borders = true
+mouse_scroll_lines = 5
+
+[ui.toast]
+delivery = "system"
+delay_seconds = 1

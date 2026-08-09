@@ -24,7 +24,11 @@ dotfiles/
 │   ├── skills/                    # shared Claude skills (SKILL.md each)
 │   └── agents/                    # shared subagent definitions
 ├── claude/
-│   └── settings.json              # Claude Code settings (non-secret)
+│   ├── settings.json              # Claude Code settings (non-secret)
+│   ├── statusline-rich.ps1        # the two-line status line
+│   └── hooks/                     # hooks referenced by settings.json
+├── herdr/
+│   └── config.toml                # Herdr keybindings + UI prefs
 ├── zed/
 │   ├── settings.json
 │   └── keymap.json
@@ -41,6 +45,9 @@ dotfiles/
 | `ai/skills/` | `~/.claude/skills/` | Claude Code |
 | `ai/agents/` | `~/.claude/agents/` | Claude Code |
 | `claude/settings.json` | `~/.claude/settings.json` | Claude Code |
+| `claude/statusline-rich.ps1` | `~/.claude/statusline-rich.ps1` | Claude Code |
+| `claude/hooks/herdr-agent-state.ps1` | `~/.claude/hooks/herdr-agent-state.ps1` | Claude Code |
+| `herdr/config.toml` | `%APPDATA%\herdr\config.toml` | Herdr |
 | `zed/settings.json` | `%APPDATA%\Zed\settings.json` | Zed |
 | `zed/keymap.json` | `%APPDATA%\Zed\keymap.json` | Zed |
 | `shell/Microsoft.PowerShell_profile.ps1` | `~\Documents\PowerShell\…_profile.ps1` | PowerShell 7 |
@@ -61,8 +68,8 @@ cd "$HOME\Documents\GitHub\dotfiles"
 
 `bootstrap.ps1` installs the software stack (pwsh, Windows Terminal, Oh My Posh,
 zoxide, fzf, git, gh, Node, Zed, the Nerd Font, PS modules, and the Claude Code
-CLI via npm, and Pi via its official installer) and then calls `install.ps1` to
-link configs and apply the look.
+CLI via npm, plus Pi and Herdr via their official installers) and then calls
+`install.ps1` to link configs and apply the look.
 `install.ps1` enables Developer Mode the first time (one UAC prompt) so the
 symlinks don't need admin, here or on any later re-run.
 Re-runnable and tolerant of already-installed items. Use
@@ -74,9 +81,33 @@ on its own to (re)link configs without touching apps.
 > "follow COLLECT-FROM-THIS-MACHINE.md" — otherwise install backs them up and
 > replaces them with the repo's versions.
 
-> **Claude Code** (npm) and **Pi** (`pi.dev/install.ps1`) are both installed by
-> bootstrap. Pi reads its global instructions from `~/.pi/agent/AGENTS.md`, which
-> `install.ps1` symlinks to the canonical `ai/AGENTS.md` — same file as Claude.
+> **Claude Code** (npm), **Pi** (`pi.dev/install.ps1`) and **Herdr**
+> (`herdr.dev/install.ps1`) are all installed by bootstrap. Pi reads its global
+> instructions from `~/.pi/agent/AGENTS.md`, which `install.ps1` symlinks to the
+> canonical `ai/AGENTS.md` — same file as Claude.
+
+## Herdr + the Claude status line
+
+[Herdr](https://herdr.dev) is the terminal workspace the agents run in: tabs,
+splits, and per-pane agent state. Its keybindings and UI prefs live in
+[`herdr/config.toml`](herdr/README.md), and the `SessionStart` hook that reports
+Claude's session to the current pane lives in
+[`claude/hooks/`](claude/hooks/README.md).
+
+The Claude Code status line is [`claude/statusline-rich.ps1`](claude/statusline-rich.ps1):
+
+```
+Opus 5 (1M context)  ████|██░░░░░░░░░░░░░░░░  31%  xhigh          main  (+21,-7)
+5-hour: 12% (r: 3h 40m) | weekly: 40% (r: 1d 2h 46m)
+```
+
+The `|` on the context bar sits at 20%, the "time to start a new chat" tick. The
+fill is green below it and amber above, and the tick turns red once the fill
+passes it.
+
+Hook and status-line commands in `claude/settings.json` are written as
+`$HOME/...`, not `C:\Users\<me>\...`, because Claude Code runs them through Git
+Bash. One settings file therefore works on machines with different usernames.
 
 ## The native-Windows terminal stack (replaces WSL + oh-my-zsh)
 
