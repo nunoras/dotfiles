@@ -5,6 +5,19 @@
 > Edit this file to change how *all* of them behave.
 > Per-project instructions belong in each repo's own `AGENTS.md`.
 
+## Active experiment - testing Matt Pocock's workflow
+
+We are currently testing Matt Pocock's skills-based development lifecycle (mattpocock/skills).
+Work should follow this pipeline, in order:
+
+1. wayfinder - map a large, foggy plan into tickets scoped to one agent session each (for smaller work, grill / grill-with-docs is the lighter pre-spec step).
+2. to-spec - turn the plan into a spec that defines the destination.
+3. to-tickets - split the spec into tickets so the work spreads across sessions.
+4. implement - build one ticket per session with TDD at pre-agreed seams, then call code-review and commit.
+5. code-review - check the work against the repo's coding standards and the spec, and flag refactoring smells.
+
+This is a temporary note for the trial. Remove it (restore from `~/.claude/CLAUDE.md.bak`) when the experiment is done.
+
 ## About me
 
 - OS: Windows (native - PowerShell 7, no WSL)
