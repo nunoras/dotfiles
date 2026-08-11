@@ -24,7 +24,8 @@ Not this skill: summarising a finished task, writing a commit message, or saving
 2. **Check state for real, do not recall it.** After a long session your memory of the working tree is stale. Run `git status --short`, `git log --oneline -5`, and the current branch. If something was running or half-applied, verify it rather than asserting it.
 3. **Separate durable from disposable.** Anything true beyond this task belongs in memory or in the repo docs, not in a handoff prompt. Say so in one line if you write one, then leave it out of the prompt.
 4. **Draft against the template below**, then cut. A handoff longer than the work it describes is a failed handoff. Aim under 60 lines.
-5. **Save and print.** Write to `~/.claude/handoffs/<YYYY-MM-DD>-<slug>.md` (use the real date from `date +%F`, slug from the goal). Then print the whole thing in the chat as a single fenced code block so it copies clean.
+5. **Pick the model for the receiving session.** See the rubric below. This session knows what the next chunk of work actually is, so it is the one that should make the call.
+6. **Save and print.** Write to `~/.claude/handoffs/<YYYY-MM-DD>-<slug>.md` (use the real date from `date +%F`, slug from the goal). Then print the whole thing in the chat as a single fenced code block so it copies clean.
 
 ## What goes in
 
@@ -77,9 +78,24 @@ DO NOT REDO
 
 Drop any section that is empty rather than writing "N/A".
 
+## Choosing the model for the next session
+
+The handoff is the moment the model gets picked, because the session boundary is the task boundary.
+Recommend one, in a single line after the code block, phrased as an instruction Nuno can act on before pasting.
+
+Pick **Opus** when the next session still has to decide something: architecture, a spec, a plan, a bug with no known cause, or anything where a wrong turn burns several sessions.
+
+Pick **Sonnet** when the decisions are already in the DECIDED section and what remains is execution: a scoped ticket, a refactor that follows an existing pattern, mechanical edits with a test that says when they are right.
+Add "and drop effort to low" when the work is genuinely mechanical.
+
+If it is a real toss-up, say Opus. The downside of under-powering a deciding session is larger than the token saving.
+
+State the reason in the same line, in a few words. "Sonnet, the design is settled and this is three files of the same edit" is useful. A bare "Sonnet" is not, because the next session cannot tell whether you thought about it.
+
 ## Output rules
 
 - The prompt goes in one plain fenced code block, nothing else inside it, ready to paste verbatim.
 - Every line starts at column 0. No blockquotes, no indentation, no nested fences.
 - No em dashes.
 - Put the saved file path and any notes to the user outside the block, after it.
+- The model recommendation goes outside the block too, on its own line, starting with `Run this on`. It stays out of the block because Nuno acts on it before the new session exists, and a session cannot change its own model.

@@ -112,7 +112,12 @@ $week = UsagePart 'weekly' $d.rate_limits.seven_day '38;5;111'
 # --- assemble ---------------------------------------------------------------
 function Visible([string]$s) { ($s -replace "$e\[[0-9;]*m", '').Length }
 
-$left = @($model, $bar, $ctxLabel) | Where-Object { $_ }
+# A non-Anthropic session gets badged. The thing that must never happen is
+# believing you are on GLM while spending Anthropic quota. Set by scripts/glm.ps1.
+$vendor = ''
+if ($env:M2_VENDOR) { $vendor = Paint " $($env:M2_VENDOR.ToUpper()) " '1;38;5;231;48;5;97' }
+
+$left = @($vendor, $model, $bar, $ctxLabel) | Where-Object { $_ }
 if ($d.effort.level) { $left += Paint $d.effort.level '38;5;96' }
 $line1 = ($left -join '  ')
 
