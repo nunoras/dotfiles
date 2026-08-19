@@ -1,4 +1,16 @@
 onboarding = false
+
+# catppuccin's secondary-text tokens sit near 3:1 on the panel background, under
+# the readable threshold. Lifting them here fixes every dim surface in herdr -
+# sidebar sub-rows, command palette, help overlay - not just the agents panel.
+[theme]
+name = "catppuccin"
+
+[theme.custom]
+overlay0 = "#8b91a8"
+subtext0 = "#c3cadb"
+surface1 = "#585b70"
+
 [update]
 channel = "preview"
 
@@ -10,18 +22,51 @@ cycle_pane_previous = "alt+left"
 cycle_pane_next = "alt+right"
 previous_tab = "ctrl+alt+left"
 next_tab = "ctrl+alt+right"
-close_pane = "ctrl+w"
+# ctrl+w was too easy to fat-finger and herdr never confirms a pane close
+close_pane = "ctrl+shift+w"
 zoom = "ctrl+shift+z"
 toggle_sidebar = "ctrl+shift+b"
 
+# nunoras.open-path: select a file path in a pane, then press one of these.
+[[keys.command]]
+key = "ctrl+shift+o"
+type = "shell"
+command = "herdr plugin action invoke open --plugin nunoras.open-path"
+
+[[keys.command]]
+key = "ctrl+shift+e"
+type = "shell"
+command = "herdr plugin action invoke reveal --plugin nunoras.open-path"
+
 [ui]
 agent_panel_sort = "spaces"
-hide_tab_bar_when_single_tab = true
+hide_tab_bar_when_single_tab = false
+tab_bar_position = "top"
 pane_gaps = false
 prompt_new_tab_name = false
 sidebar_collapsed_mode = "hidden"
+# two-line agent entries clip at the default 36
+sidebar_max_width = 44
 show_agent_labels_on_pane_borders = true
 mouse_scroll_lines = 5
+
+# $color is stamped by the nunoras.project-colors plugin: one colour per project,
+# on the space and on every chat under it.
+[ui.sidebar.spaces]
+rows = [["$color", "state_icon", "workspace"], ["branch", "git_status"]]
+
+# sidebar agent rows: drop the workspace token, the space header already shows it.
+# Every agent here is claude, so the old "agent" row said nothing - it now carries
+# the lifecycle state and the title the agent set for itself.
+# state_text takes no fg on purpose: herdr colours it per state, and hardcoding a
+# hex would make blocked and idle look identical.
+[ui.sidebar.agents]
+row_gap = 1
+rows = [
+  ["$color", "state_icon", { token = "tab", fg = "#cdd6f4", bold = true, dim = false }],
+  [{ token = "state_text", dim = false, bold = true },
+   { token = "terminal_title_stripped", fg = "#a6adc8", dim = false }],
+]
 
 [ui.toast]
 delivery = "system"
