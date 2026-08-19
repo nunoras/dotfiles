@@ -1,0 +1,5 @@
+{
+  "//": "Project name -> the glyph its space and every chat under it carry in the sidebar. A project with no entry here falls back to the auto-assigned colour square in colors.json, so new projects still get a distinct marker with no editing. Values may be a literal emoji, or codepoints like \"U+1F3F0\" if this file ever has to survive an editor that is not UTF-8. Keep to single-codepoint emoji: ZWJ sequences render at unpredictable widths in a terminal.",
+  "metin2-server": "🏰",
+  "drop": "🛒"
+}
