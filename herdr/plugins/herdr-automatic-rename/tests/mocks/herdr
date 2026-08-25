@@ -1,0 +1,101 @@
+#!/usr/bin/env bash
+# Fake `herdr` CLI for the reconcile integration test.
+#
+# Read-only queries are served from fixture files in $HERDR_MOCK_DIR:
+#   workspaces.json          <- workspace list
+#   tabs_<workspace_id>.json  <- tab list --workspace <id>
+#   tab_<tab_id>.json         <- tab get <id>
+#   panes.json                <- pane list
+#   procinfo_<pane_id>.json   <- pane process-info --pane <id>
+#   agents.json               <- agent list
+#   snapshot.json             <- api snapshot (workspaces/tabs/panes/agents in one)
+#
+# A scenario that ships snapshot.json exercises the single-call snapshot path;
+# one that omits it gets the empty default here, so the engine falls back to the
+# individual list commands above -- both paths stay covered.
+#
+# Mutating commands (the whole point of the test) are appended verbatim to
+# $HERDR_MOCK_LOG so the test can assert exactly which renames the engine issued.
+# A missing query fixture yields a valid-but-empty result so the engine degrades
+# the same way it would against a real herdr that returned nothing.
+
+dir="${HERDR_MOCK_DIR:?HERDR_MOCK_DIR unset}"
+log="${HERDR_MOCK_LOG:?HERDR_MOCK_LOG unset}"
+
+serve() { cat "$dir/$1" 2>/dev/null || printf '%s' "$2"; }
+
+group="$1"; shift 2>/dev/null || true
+action="$1"; shift 2>/dev/null || true
+
+case "$group" in
+  # $HERDR_MOCK_VERSION picks the herdr the engine thinks it is talking to, which
+  # gates agent numbering (herdr >= 0.7.5 rejects a bracketed agent name). The
+  # default matches the real world; a scenario that wants the numbering path sets
+  # it to an older version explicitly. $HERDR_MOCK_NO_VERSION=1 makes the query
+  # fail outright, standing in for a herdr whose version cannot be read.
+  --version|-V)
+    [ "${HERDR_MOCK_NO_VERSION:-0}" = "1" ] && exit 1
+    printf 'herdr %s\n' "${HERDR_MOCK_VERSION:-0.8.0}"
+    exit 0 ;;
+  workspace)
+    case "$action" in
+      list)   serve workspaces.json '{"result":{"workspaces":[]}}' ;;
+      # $HERDR_MOCK_FAIL_RENAME=1 rejects this the way it rejects a tab rename
+      # (see below): logged, then non-zero, so a test can tell an attempted
+      # rename from a landed one.
+      rename) printf 'workspace rename %s %s\n' "$1" "$2" >>"$log"
+              [ "${HERDR_MOCK_FAIL_RENAME:-0}" = "1" ] && exit 1 ;;
+    esac ;;
+  tab)
+    case "$action" in
+      list)
+        w=""
+        while [ $# -gt 0 ]; do case "$1" in --workspace) w="$2"; shift 2 ;; *) shift ;; esac; done
+        serve "tabs_$w.json" '{"result":{"tabs":[]}}' ;;
+      get)    serve "tab_$1.json" '{}' ;;
+      # $HERDR_MOCK_FAIL_RENAME=1 stands in for a herdr that REJECTS the rename
+      # (an invalid label, a socket blip): the attempt is still logged, so a test
+      # can assert it was issued, and the command then fails so the engine sees a
+      # non-zero status. Unset (the default) always succeeds, as a real rename
+      # normally does.
+      # $HERDR_MOCK_RERUN_ONCE holds a path: the first rename touches it and then
+      # forgets it. That is a herdr event landing WHILE a pass runs, which is the
+      # only way to make ar_run take its coalescing loop a second time -- the loop
+      # clears the flag when it starts, so a test cannot raise it beforehand.
+      rename) printf 'tab rename %s %s\n' "$1" "$2" >>"$log"
+              # Once means once: the unset would only apply inside this child, so
+              # a marker file next to the flag is what remembers.
+              if [ -n "${HERDR_MOCK_RERUN_ONCE:-}" ] && [ ! -f "$HERDR_MOCK_RERUN_ONCE.done" ]; then
+                : >"$HERDR_MOCK_RERUN_ONCE" 2>/dev/null || true
+                : >"$HERDR_MOCK_RERUN_ONCE.done" 2>/dev/null || true
+              fi
+              [ "${HERDR_MOCK_FAIL_RENAME:-0}" = "1" ] && exit 1 ;;
+    esac ;;
+  notification)
+    # The two actions notify when they finish. Logged like any other mutating
+    # command so a scenario can assert what the user was told.
+    case "$action" in
+      show) printf 'notification show %s\n' "$*" >>"$log" ;;
+    esac ;;
+  pane)
+    case "$action" in
+      list) serve panes.json '{"result":{"panes":[]}}' ;;
+      process-info)
+        p=""
+        while [ $# -gt 0 ]; do case "$1" in --pane) p="$2"; shift 2 ;; *) shift ;; esac; done
+        serve "procinfo_$p.json" '{}' ;;
+    esac ;;
+  agent)
+    case "$action" in
+      list)   serve agents.json '{"result":{"agents":[]}}' ;;
+      rename) printf 'agent rename %s %s\n' "$1" "$2" >>"$log" ;;
+    esac ;;
+  api)
+    case "$action" in
+      # Empty default -> the engine's snapshot guard fails -> it falls back to the
+      # individual list commands. A scenario opts into the snapshot path by
+      # shipping snapshot.json.
+      snapshot) serve snapshot.json '' ;;
+    esac ;;
+esac
+exit 0
