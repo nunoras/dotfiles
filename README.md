@@ -21,7 +21,7 @@ dotfiles/
 ├── COLLECT-FROM-THIS-MACHINE.md   # runbook: pull a machine's configs INTO this repo
 ├── ai/
 │   ├── AGENTS.md                  # ⭐ single source of truth (system prompt)
-│   ├── skills/                    # shared Claude skills (SKILL.md each)
+│   ├── skills/                    # Claude Code skills (SKILL.md each)
 │   └── agents/                    # shared subagent definitions
 ├── claude/
 │   ├── settings.json              # Claude Code settings (non-secret)
@@ -42,6 +42,8 @@ dotfiles/
 | Repo file | Symlinked to | Read by |
 |---|---|---|
 | `ai/AGENTS.md` | `~/.claude/CLAUDE.md` | Claude Code |
+| `ai/system-prompt-append.md` | `~/.claude/system-prompt-append.md` | Claude Code (via the `claude` shim) |
+| `ai/scripts/` | `~/.claude/scripts/` | PowerShell profiles, agent scripts |
 | `ai/skills/` | `~/.claude/skills/` | Claude Code |
 | `ai/agents/` | `~/.claude/agents/` | Claude Code |
 | `claude/settings.json` | `~/.claude/settings.json` | Claude Code |
@@ -51,7 +53,19 @@ dotfiles/
 | `zed/settings.json` | `%APPDATA%\Zed\settings.json` | Zed |
 | `zed/keymap.json` | `%APPDATA%\Zed\keymap.json` | Zed |
 | `shell/Microsoft.PowerShell_profile.ps1` | `~\Documents\PowerShell\…_profile.ps1` | PowerShell 7 |
+| `shell/WindowsPowerShell_profile.ps1` | `~\Documents\WindowsPowerShell\…_profile.ps1` | Windows PowerShell 5.1 (herdr panes) |
+| `pi/skills/` | `~/.pi/agent/skills/` | Pi |
+| `pi/extensions/` | `~/.pi/agent/extensions/` | Pi |
 | `ai/AGENTS.md` | `~/.pi/agent/AGENTS.md` | Pi |
+
+### The two skill sets are separate on purpose
+
+Claude Code reads `ai/skills`, pi reads `pi/skills`, and neither reads the other.
+They are not two copies of one set: `orchestrator` exists in both with deliberately different content, because the two harnesses need different instructions.
+
+Three skills are mirrored across both because both harnesses need them and they are harness-agnostic prose: `grilling`, `grill-with-docs`, `domain-modeling`.
+Edit one, edit the other.
+Dropping the copy from one side breaks whichever harness is documented to use it - AGENTS.md puts `grilling` at step 1 of the pipeline, and the planner runs on Claude Code.
 
 ## Setup on a new machine
 
@@ -85,6 +99,36 @@ on its own to (re)link configs without touching apps.
 > (`herdr.dev/install.ps1`) are all installed by bootstrap. Pi reads its global
 > instructions from `~/.pi/agent/AGENTS.md`, which `install.ps1` symlinks to the
 > canonical `ai/AGENTS.md` — same file as Claude.
+
+## The system-prompt append
+
+[`ai/system-prompt-append.md`](ai/system-prompt-append.md) is appended to the
+system prompt of **every** Claude Code session. It is vendored verbatim from
+[disler/fixing-smartass-opus-5](https://github.com/disler/fixing-smartass-opus-5);
+re-fetch the raw file to update it.
+
+Claude Code has no settings key and no env var for this - checked on 2.x, an
+`appendSystemPrompt` key in `--settings` is silently ignored. The only mechanism
+is the `--append-system-prompt-file` flag, so the flag has to be on every launch.
+[`ai/scripts/claude-wrapper.ps1`](ai/scripts/claude-wrapper.ps1) defines a
+PowerShell function named `claude` that injects it, and both profiles dot-source
+that file - pwsh 7 for normal terminals, Windows PowerShell 5.1 because that is
+what herdr spawns for its panes.
+
+This is different from `ai/AGENTS.md`. AGENTS.md is *context* Claude reads and is
+shared with Pi and Zed; the append goes into the actual system prompt and is
+Claude Code only.
+
+Three ways out:
+
+| want | do |
+|---|---|
+| one session without it | `$env:M2_NO_PROMPT_APPEND = 1` |
+| one command without it | `claude.cmd ...` (bypasses the function) |
+| your own prompt instead | pass any `--system-prompt*` flag; the shim steps aside |
+
+Subagents do not inherit it. The hidden `--append-subagent-system-prompt` flag
+covers them if that is ever wanted.
 
 ## Herdr + the Claude status line
 
