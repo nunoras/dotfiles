@@ -268,8 +268,17 @@ Write-Host "dotfiles: linking configs from $RepoRoot" -ForegroundColor Cyan
 
 # Claude Code -- point its CLAUDE.md at the canonical AGENTS.md
 New-RepoSymlink "$HOME\.claude\CLAUDE.md"     "$RepoRoot\ai\AGENTS.md"
+
+# Appended to every Claude Code session's system prompt by the `claude` shim
+# in shell/*_profile.ps1 -- Claude Code has no settings key for this, only a flag.
+New-RepoSymlink "$HOME\.claude\system-prompt-append.md" "$RepoRoot\ai\system-prompt-append.md"
 New-RepoSymlink "$HOME\.claude\skills"        "$RepoRoot\ai\skills"
 New-RepoSymlink "$HOME\.claude\agents"        "$RepoRoot\ai\agents"
+New-RepoSymlink "$HOME\.claude\scripts"       "$RepoRoot\ai\scripts"
+
+# Model roster for pane orchestration -- read by the dispatch scripts and the
+# to-tickets skill. A well-known path so non-PowerShell consumers find it too.
+New-RepoSymlink "$HOME\.claude\roster.json"   "$RepoRoot\ai\roster.json"
 New-RepoSymlink "$HOME\.claude\settings.json" "$RepoRoot\claude\settings.json"
 
 # Claude Code status line (settings.json points at this path)
@@ -278,6 +287,8 @@ New-RepoSymlink "$HOME\.claude\statusline-rich.ps1" "$RepoRoot\claude\statusline
 # Claude Code hooks -- linked file by file, so hooks that other tools drop into
 # ~/.claude/hooks (plugin self-healers, etc.) are left alone.
 New-RepoSymlink "$HOME\.claude\hooks\herdr-agent-state.ps1" "$RepoRoot\claude\hooks\herdr-agent-state.ps1"
+New-RepoSymlink "$HOME\.claude\hooks\herdr-tab-title.ps1"   "$RepoRoot\claude\hooks\herdr-tab-title.ps1"
+New-RepoSymlink "$HOME\.claude\hooks\unslop-always.ps1"     "$RepoRoot\claude\hooks\unslop-always.ps1"
 
 # Herdr (terminal workspace manager) -- keybindings + UI prefs
 New-RepoSymlink "$env:APPDATA\herdr\config.toml" "$RepoRoot\herdr\config.toml"
@@ -292,6 +303,11 @@ New-RepoSymlink "$HOME\Documents\PowerShell\Microsoft.PowerShell_profile.ps1" `
                 "$RepoRoot\shell\Microsoft.PowerShell_profile.ps1"
 New-RepoSymlink "$HOME\Documents\PowerShell\theme.omp.json" `
                 "$RepoRoot\shell\theme.omp.json"
+
+# Windows PowerShell 5.1 profile -- herdr spawns powershell.exe for its panes,
+# which never reads the pwsh 7 profile above.
+New-RepoSymlink "$HOME\Documents\WindowsPowerShell\Microsoft.PowerShell_profile.ps1" `
+                "$RepoRoot\shell\WindowsPowerShell_profile.ps1"
 
 # Pi -- settings, extensions, and skills are canonical in this repo.
 # AGENTS.md is shared with Claude (same canonical file).

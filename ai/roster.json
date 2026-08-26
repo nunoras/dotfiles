@@ -1,0 +1,6 @@
+{
+  "planner":   { "primary": "anthropic:claude-fable-5",      "fallback": "anthropic:claude-opus-5" },
+  "builder-a": { "primary": "zai:glm-5.3",                   "fallback": "openrouter:z-ai/glm-5.3" },
+  "builder-b": { "primary": "openrouter:stealth/ox-alpha",   "fallback": "openrouter:z-ai/glm-5.3" },
+  "reviewer":  { "primary": "openai-codex:gpt-5.5",          "fallback": "openrouter:openai/gpt-5.5" }
+}
