@@ -28,3 +28,54 @@ Consequences worth knowing:
 - That installer also rewrites the `settings.json` hook entry with an absolute
   path. Put `$HOME/...` back before committing, or the config stops being
   portable.
+
+## herdr tab title (`herdr-tab-title.ps1`)
+
+A `UserPromptSubmit` hook that names the Herdr tab after whatever the
+conversation turns out to be about, so the sidebar isn't a wall of identical
+entries.
+
+It doesn't rename anything itself.
+On the first prompt of a session it injects a short instruction into the
+context, and the agent picks the label and runs `herdr tab rename <tab> "<topic>"`.
+Letting the model choose is the whole point: a truncated first prompt makes a
+much worse tab name than two words the agent picks after reading the request.
+
+Guards, in order - it exits silently unless all of them pass:
+
+- `HERDR_ENV=1` and `HERDR_TAB_ID` are set, so it's a no-op outside Herdr.
+- The prompt came from the main conversation, not a subagent (`agent_id` unset).
+- No marker file in `$env:TEMP\claude-herdr-tab` for this session and tab, so it
+  asks once per session rather than every prompt.
+- The tab has no `custom_name` in Herdr's `session.json`, so a tab named by hand
+  is left alone.
+
+If the first message is a bare greeting with no topic, the instruction tells the
+agent to hold off and rename once the topic becomes clear. The instruction stays
+in context, so a later turn can still act on it.
+
+Unlike `herdr-agent-state.ps1`, this file is ours - Herdr's integration
+installer won't touch it.
+
+## unslop (`unslop-always.ps1`)
+
+A `SessionStart` hook that prints the body of `ai/skills/unslop/SKILL.md` to
+stdout, which Claude Code adds to the session context.
+
+It exists because a skill can't declare itself always-on. Claude Code loads a
+skill's `name` and `description` at startup and leaves the body on disk until
+the model decides to invoke it. Unslop's description says "Must always apply",
+but that's prose in a YAML field, not something the harness enforces, and the
+failure is silent: you never see a skipped invocation, only worse writing. The
+frontmatter has no always-on field, just `disable-model-invocation` and `paths`,
+which both narrow auto-loading rather than widen it.
+
+Costs about 1,700 tokens per session, paid even in sessions that only touch
+code. Drop the `settings.json` entry if that stops being worth it - the skill
+still works as `/unslop`.
+
+It strips the YAML frontmatter before printing, since the skill listing already
+carries the name and description. If the skill file is missing it exits 0 and
+prints nothing. It resolves the skill through `$HOME\.claude\skills\` rather
+than `$PSScriptRoot`, because this file is a symlink and walking to a sibling
+directory from the link would land in the wrong tree.
