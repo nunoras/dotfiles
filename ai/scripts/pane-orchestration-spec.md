@@ -9,7 +9,7 @@ Sibling doc: `README-glm.md` (the vendor-split and glm/gpt scripts this builds o
 A home-grown, herdr-based dispatch layer that replaces `/workflows`.
 
 The planner assigns a model to each unit of work; a human dispatches that work into a herdr pane on the right harness; builders and reviewers run in their own panes, with a reviewer split to the right of the builder it reviews.
-Quota exhaustion mid-work falls back to a paid model instead of dying.
+Quota exhaustion mid-work falls back to the role's fallback model instead of dying, where the roster gives that role one.
 
 Done means: `/workflows` is gone, a plan's tickets carry model assignments, and one command per ticket opens the correct pane.
 
@@ -64,7 +64,8 @@ So fallback is script-driven for every role:
 
 - The watcher (generalized `Wait-Agent`) detects a session that died on a quota, rate-limit, or auth failure.
 - It relaunches the same ticket on the ticket's `fallbackModels` entry, in the same worktree and pane.
-- The planner is HITL, so its fallback is a manual relaunch on a non-Anthropic pi model; builders and reviewers get the automated relaunch.
+- Builders get the automated relaunch. The planner is HITL, so its fallback is a manual relaunch on a non-Anthropic pi model.
+- The reviewer has no fallback at all (see the roster table), so there is nothing to relaunch it on: the watcher must notify and stop rather than pick a model nobody chose.
 
 This is more code than "pi does it for us," but it is the only mechanism that actually exists across the providers in the roster.
 
@@ -74,9 +75,9 @@ Each ticket is a `.md` file: YAML frontmatter plus a brief body.
 
 ```markdown
 ---
-role: builder            # builder | reviewer
-model: glm-5.3           # from the roster
-fallbackModels: z-ai/glm-5.3
+role: builder-a          # roster slot: builder-a | builder-b | reviewer | planner
+model: zai:glm-5.3       # from the roster, always provider:id
+fallbackModels: openrouter:z-ai/glm-5.2:free   # omit for a role with no fallback
 base: main               # branch to worktree from
 ---
 

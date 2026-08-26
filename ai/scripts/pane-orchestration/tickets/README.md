@@ -13,7 +13,7 @@ Research is done; these are build tickets.
 | id | title | blocked by |
 |---|---|---|
 | 01 | Roster config + harness-derivation helper | - |
-| 02 | Authenticate openai-codex in pi (or default reviewer to OpenRouter) | - |
+| 02 | Authenticate openai-codex in pi | - |
 | 03 | dispatch.ps1 - frontmatter-driven pane dispatch | 01 |
 | 04 | Extend herdr-autostart for arbitrary provider+model+fallback | 01 |
 | 05 | Fallback watcher - relaunch dead session on fallback model | 03, 04 |

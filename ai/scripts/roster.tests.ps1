@@ -35,6 +35,10 @@ Assert-Eq $a.Model    'glm-5.3' 'simple model'
 $b = Split-ModelRef 'openrouter:z-ai/glm-5.3'
 Assert-Eq $b.Provider 'openrouter'   'slashed model provider'
 Assert-Eq $b.Model    'z-ai/glm-5.3' 'slashed model id (first colon only)'
+# OpenRouter free ids carry their own colon, so the split must not be greedy.
+$c = Split-ModelRef 'openrouter:z-ai/glm-5.2:free'
+Assert-Eq $c.Provider 'openrouter'          'free-tier ref provider'
+Assert-Eq $c.Model    'z-ai/glm-5.2:free'   'free-tier ref keeps its own colon'
 Assert-Throws { Split-ModelRef 'glm-5.3' }  'no colon throws'
 Assert-Throws { Split-ModelRef 'zai:' }     'empty id throws'
 
