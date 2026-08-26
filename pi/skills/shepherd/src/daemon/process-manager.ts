@@ -1,0 +1,289 @@
+import { spawn } from "node:child_process";
+import {
+  closeSync,
+  existsSync,
+  mkdirSync,
+  openSync,
+  readFileSync,
+  rmSync,
+  writeFileSync,
+} from "node:fs";
+import { createConnection } from "node:net";
+import { dirname } from "node:path";
+
+export type DaemonRuntimeRecord = {
+  dbPath: string;
+  homeDir: string;
+  logPath: string;
+  pid: number;
+  pidPath: string;
+  socketPath: string;
+  startedAt: string;
+  version: 1;
+};
+
+export type DaemonStatus =
+  | {
+      pidPath: string;
+      socketPath: string;
+      socketReachable: true;
+      stalePid?: number;
+      state: "orphaned";
+    }
+  | { pidPath: string; socketPath: string; state: "stopped"; stalePid?: number }
+  | {
+      pid: number;
+      pidPath: string;
+      socketPath: string;
+      socketReachable: boolean;
+      state: "running";
+    };
+
+type DaemonSpawnProcess = (
+  command: string,
+  args: string[],
+  options: {
+    detached: boolean;
+    env: NodeJS.ProcessEnv;
+    stdio: ["ignore", number, number];
+  },
+) => { pid: number | undefined; unref(): void };
+
+export type DaemonProcessDependencies = {
+  connectSocket?: (socketPath: string) => Promise<boolean>;
+  isProcessRunning?: (pid: number) => boolean;
+  killProcess?: (pid: number, signal: NodeJS.Signals) => void;
+  spawnProcess?: DaemonSpawnProcess;
+  waitMs?: (ms: number) => Promise<void>;
+};
+
+export function readDaemonRuntimeRecord(path: string): DaemonRuntimeRecord | undefined {
+  if (!existsSync(path)) {
+    return undefined;
+  }
+
+  try {
+    const value = JSON.parse(readFileSync(path, "utf8")) as Partial<DaemonRuntimeRecord>;
+    if (
+      value.version !== 1 ||
+      typeof value.dbPath !== "string" ||
+      typeof value.homeDir !== "string" ||
+      typeof value.logPath !== "string" ||
+      typeof value.pid !== "number" ||
+      typeof value.pidPath !== "string" ||
+      typeof value.socketPath !== "string" ||
+      typeof value.startedAt !== "string"
+    ) {
+      return undefined;
+    }
+
+    return value as DaemonRuntimeRecord;
+  } catch {
+    return undefined;
+  }
+}
+
+export function writeDaemonRuntimeRecord(path: string, record: DaemonRuntimeRecord): void {
+  mkdirSync(dirname(path), { mode: 0o700, recursive: true });
+  writeFileSync(path, `${JSON.stringify(record, null, 2)}\n`, { mode: 0o600 });
+}
+
+export async function prepareDaemonSocketPath(input: {
+  deps?: DaemonProcessDependencies;
+  socketPath: string;
+}): Promise<void> {
+  mkdirSync(dirname(input.socketPath), { mode: 0o700, recursive: true });
+  if (!existsSync(input.socketPath)) {
+    return;
+  }
+
+  const connectSocket = input.deps?.connectSocket ?? defaultConnectSocket;
+  if (await connectSocket(input.socketPath)) {
+    throw new Error(`Shepherd daemon socket is already reachable: ${input.socketPath}`);
+  }
+
+  rmSync(input.socketPath, { force: true });
+}
+
+export async function getDaemonStatus(input: {
+  deps?: DaemonProcessDependencies;
+  pidPath: string;
+  socketPath: string;
+}): Promise<DaemonStatus> {
+  const processIsRunning = input.deps?.isProcessRunning ?? isProcessRunning;
+  const connectSocket = input.deps?.connectSocket ?? defaultConnectSocket;
+
+  if (!existsSync(input.pidPath)) {
+    if (await connectSocket(input.socketPath)) {
+      return {
+        pidPath: input.pidPath,
+        socketPath: input.socketPath,
+        socketReachable: true,
+        state: "orphaned",
+      };
+    }
+    return { pidPath: input.pidPath, socketPath: input.socketPath, state: "stopped" };
+  }
+
+  const pid = Number(readFileSync(input.pidPath, "utf8").trim());
+  if (!Number.isInteger(pid) || pid <= 0 || !processIsRunning(pid)) {
+    if (await connectSocket(input.socketPath)) {
+      return {
+        pidPath: input.pidPath,
+        socketPath: input.socketPath,
+        socketReachable: true,
+        stalePid: pid,
+        state: "orphaned",
+      };
+    }
+    return {
+      pidPath: input.pidPath,
+      socketPath: input.socketPath,
+      stalePid: pid,
+      state: "stopped",
+    };
+  }
+
+  return {
+    pid,
+    pidPath: input.pidPath,
+    socketPath: input.socketPath,
+    socketReachable: await connectSocket(input.socketPath),
+    state: "running",
+  };
+}
+
+export async function startDaemonProcess(input: {
+  deps?: DaemonProcessDependencies;
+  entrypointPath: string;
+  env: NodeJS.ProcessEnv;
+  logPath: string;
+  nodePath: string;
+  pidPath: string;
+  runtimeRecord: Omit<DaemonRuntimeRecord, "pid" | "startedAt" | "version">;
+  runtimeRecordPath: string;
+  socketPath: string;
+}): Promise<{ pid: number }> {
+  const status = await getDaemonStatus({
+    ...(input.deps !== undefined ? { deps: input.deps } : {}),
+    pidPath: input.pidPath,
+    socketPath: input.socketPath,
+  });
+  if (status.state === "running") {
+    throw new Error(`Shepherd daemon is already running with pid ${status.pid}`);
+  }
+  if (status.state === "orphaned") {
+    throw new Error(
+      `Shepherd daemon socket is reachable but its PID is stale: ${status.socketPath}`,
+    );
+  }
+
+  mkdirSync(dirname(input.pidPath), { mode: 0o700, recursive: true });
+  mkdirSync(dirname(input.logPath), { mode: 0o700, recursive: true });
+  if (status.state === "stopped" && status.stalePid !== undefined) {
+    rmSync(input.pidPath, { force: true });
+  }
+
+  const logFd = openSync(input.logPath, "a", 0o600);
+  let child: { pid: number | undefined; unref(): void };
+  try {
+    child = (input.deps?.spawnProcess ?? spawnDaemonProcess)(
+      input.nodePath,
+      [input.entrypointPath],
+      {
+        detached: true,
+        env: input.env,
+        stdio: ["ignore", logFd, logFd],
+      },
+    );
+  } finally {
+    closeSync(logFd);
+  }
+
+  if (!child.pid) {
+    throw new Error("Failed to start Shepherd daemon: child pid was not assigned");
+  }
+
+  child.unref();
+  writeFileSync(input.pidPath, `${child.pid}\n`, { mode: 0o600 });
+  writeDaemonRuntimeRecord(input.runtimeRecordPath, {
+    ...input.runtimeRecord,
+    pid: child.pid,
+    startedAt: new Date().toISOString(),
+    version: 1,
+  });
+  return { pid: child.pid };
+}
+
+export async function stopDaemonProcess(input: {
+  deps?: DaemonProcessDependencies;
+  pidPath: string;
+  socketPath: string;
+  timeoutMs: number;
+}): Promise<{ alreadyStopped: boolean; pid?: number }> {
+  const deps = input.deps ?? {};
+  const status = await getDaemonStatus({
+    deps,
+    pidPath: input.pidPath,
+    socketPath: input.socketPath,
+  });
+  if (status.state === "stopped") {
+    rmSync(input.pidPath, { force: true });
+    return { alreadyStopped: true };
+  }
+  if (status.state === "orphaned") {
+    throw new Error(
+      `Shepherd daemon socket is reachable but its PID is stale: ${status.socketPath}`,
+    );
+  }
+
+  const killProcess = deps.killProcess ?? ((pid, signal) => process.kill(pid, signal));
+  const processIsRunning = deps.isProcessRunning ?? isProcessRunning;
+  const waitMs = deps.waitMs ?? ((ms) => new Promise<void>((resolve) => setTimeout(resolve, ms)));
+
+  killProcess(status.pid, "SIGTERM");
+  const deadline = Date.now() + input.timeoutMs;
+  while (Date.now() < deadline) {
+    if (!processIsRunning(status.pid)) {
+      rmSync(input.pidPath, { force: true });
+      return { alreadyStopped: false, pid: status.pid };
+    }
+    await waitMs(50);
+  }
+
+  throw new Error(`Timed out waiting for Shepherd daemon pid ${status.pid} to stop`);
+}
+
+function spawnDaemonProcess(
+  command: string,
+  args: string[],
+  options: Parameters<DaemonSpawnProcess>[2],
+): { pid: number | undefined; unref(): void } {
+  const child = spawn(command, args, options);
+  return { pid: child.pid, unref: () => child.unref() };
+}
+
+type ProcessProbe = (pid: number, signal: 0) => unknown;
+
+export function isProcessRunning(pid: number, probe: ProcessProbe = process.kill): boolean {
+  try {
+    probe(pid, 0);
+    return true;
+  } catch (error) {
+    return typeof error === "object" && error !== null && "code" in error && error.code === "EPERM";
+  }
+}
+
+function defaultConnectSocket(socketPath: string): Promise<boolean> {
+  return new Promise((resolve) => {
+    const socket = createConnection(socketPath);
+    const done = (value: boolean) => {
+      socket.removeAllListeners();
+      socket.destroy();
+      resolve(value);
+    };
+    socket.once("connect", () => done(true));
+    socket.once("error", () => done(false));
+    socket.setTimeout(200, () => done(false));
+  });
+}
