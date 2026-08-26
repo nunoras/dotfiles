@@ -33,6 +33,7 @@ param(
 
 $ErrorActionPreference = 'Stop'
 . (Join-Path $PSScriptRoot 'roster.ps1')
+. (Join-Path $PSScriptRoot 'herdr.ps1')
 
 # --- verdict is a precondition ----------------------------------------------
 # Checked by hand, not [Parameter(Mandatory)], so a non-interactive run fails
@@ -174,61 +175,22 @@ if ($DryRun) {
 }
 
 # --- herdr plumbing ---------------------------------------------------------
-function Invoke-Herdr {
-    param([string[]]$HerdrArgs)
-    $raw = & herdr @HerdrArgs 2>&1 | Out-String
-    try { $json = $raw | ConvertFrom-Json } catch { throw "herdr $($HerdrArgs -join ' ') returned non-JSON: $raw" }
-    if ($json.error) { throw "herdr $($HerdrArgs[0]) $($HerdrArgs[1]): $($json.error.message)" }
-    return $json.result
-}
-function Wait-Agent {
-    param([string]$Name, [int]$TimeoutMs = 1800000, [int]$PollMs = 2000)
-    $deadline = (Get-Date).AddMilliseconds($TimeoutMs); $sawWorking = $false; $settled = @('idle','done','blocked')
-    while ((Get-Date) -lt $deadline) {
-        $status = (Invoke-Herdr @('agent','get',$Name)).agent.agent_status
-        if ($status -eq 'working') { $sawWorking = $true }
-        elseif ($status -eq 'blocked') { return 'blocked' }
-        elseif ($sawWorking -and $settled -contains $status) { return $status }
-        Start-Sleep -Milliseconds $PollMs
-    }
-    return 'timeout'
-}
-
 if (-not (Get-Command herdr -ErrorAction SilentlyContinue)) { throw "herdr not found." }
 
 # Resolve the builder's pane to split beside it. Prefer the explicit -BuilderPane;
 # otherwise ask herdr for the agent and read a pane id off it defensively.
-if (-not $BuilderPane) {
-    $a = $null
-    try { $a = (Invoke-Herdr @('agent','get',$BuilderAgent)).agent } catch {}
-    if ($a) {
-        foreach ($f in 'pane_id','pane','paneId') { if ($a.$f) { $BuilderPane = $a.$f; break } }
-    }
-}
+if (-not $BuilderPane) { $BuilderPane = Get-AgentPane -Name $BuilderAgent }
 if (-not $BuilderPane) {
     throw "could not resolve the builder pane for agent '$BuilderAgent'. Pass -BuilderPane <id> (see 'herdr pane list')."
 }
 
 # Split right: builder stays on the left, reviewer opens on the right.
-$pane = (Invoke-Herdr @('pane','split',$BuilderPane,'--direction','right',
-        '--cwd',$Repo,
-        '--env','M2_AUTOSTART=pi',
-        '--env',"M2_PROVIDER=$($modelRef.Provider)",
-        '--env',"M2_MODEL=$($modelRef.Model)",
-        '--env','M2_AUTOSTART_AGENT=reviewer',
-        '--env','M2_READONLY=1',
-        '--no-focus')).pane
-$paneId = $pane.pane_id
+$paneId = New-AgentPane -FromPane $BuilderPane -Cwd $Repo -Provider $modelRef.Provider -Model $modelRef.Model -AgentPrompt 'reviewer' -ReadOnly
 Write-Host "Reviewer pane $paneId opening (right of builder), waiting for the agent..." -ForegroundColor Cyan
 
-$detectDeadline = (Get-Date).AddSeconds(90); $detected = $false
-while ((Get-Date) -lt $detectDeadline) {
-    $p = (Invoke-Herdr @('pane','get',$paneId)).pane
-    if ($p.agent) { $detected = $true; break }
-    Start-Sleep -Seconds 2
+if (-not (Wait-PaneAgent -PaneId $paneId -Name $reviewerName)) {
+    throw "no reviewer agent detected in $paneId after 90s. Check herdr-autostart.ps1 is dot-sourced by the PowerShell 5.1 profile."
 }
-if (-not $detected) { throw "no reviewer agent detected in $paneId after 90s. Check herdr-autostart.ps1 is dot-sourced by the PowerShell 5.1 profile." }
-Invoke-Herdr @('agent','rename',$paneId,$reviewerName) | Out-Null
 Write-Host "Reviewer '$reviewerName' up on $($modelRef.Provider):$($modelRef.Model) ($modelWhy)" -ForegroundColor Green
 
 Invoke-Herdr @('agent','prompt',$reviewerName,"Read the review task at $taskFile in full, then review the repository in this worktree. You are read-only: do not modify anything.") | Out-Null
@@ -238,7 +200,18 @@ if ($NoWatch) {
     Write-Host ""; Write-Host "Not waiting. Read the review and RELAY IT VERBATIM:  herdr agent read $reviewerName" -ForegroundColor Yellow
     return $plan
 }
-$status = Wait-Agent -Name $reviewerName -TimeoutMs $TimeoutMs
+$deathLine = ''
+$status = Wait-Agent -Name $reviewerName -TimeoutMs $TimeoutMs -DeathLine ([ref]$deathLine)
+if ($status -eq 'died') {
+    # The reviewer has no roster fallback by design, so there is nothing to fail
+    # over to. Say so instead of leaving the pane looking merely quiet.
+    Invoke-Herdr @('notification','show',"$reviewerName died on $($modelRef.Provider):$($modelRef.Model)") | Out-Null
+    Write-Host ""
+    Write-Host "Reviewer died on $($modelRef.Provider):$($modelRef.Model): $deathLine" -ForegroundColor Red
+    Write-Host "There is NO REVIEW. Do not treat this change as reviewed." -ForegroundColor Red
+    Write-Host "The reviewer has no fallback on purpose - re-authenticate the provider, or run the Opus 'reviewer' agent by hand and say the review ran on the fallback."
+    return $plan
+}
 Invoke-Herdr @('notification','show',"$reviewerName finished ($status)") | Out-Null
 Write-Host ""; Write-Host "Reviewer $status." -ForegroundColor Green
 Write-Host "Read it and RELAY VERBATIM - do not paraphrase, do not soften:" -ForegroundColor Yellow

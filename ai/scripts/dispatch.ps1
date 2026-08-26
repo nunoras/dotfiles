@@ -12,6 +12,13 @@
 # Human-run, one ticket at a time - the spend gate is a person. `blocked` is
 # recoverable in the pane. Keep PowerShell 5.1 compatible (herdr spawns 5.1):
 # no ??, no ?., no ternary.
+#
+# While watching, a session that dies on a provider error (quota, rate limit,
+# auth) is failed over onto the ticket's `fallbackModels`, one attempt per
+# level. pi has no mid-session fallback of its own for these providers, so this
+# is the only thing standing between an exhausted subscription and a pane that
+# sits idle forever. The final report always names the model that actually
+# finished.
 
 [CmdletBinding()]
 param(
@@ -24,6 +31,7 @@ param(
 
 $ErrorActionPreference = 'Stop'
 . (Join-Path $PSScriptRoot 'roster.ps1')
+. (Join-Path $PSScriptRoot 'herdr.ps1')
 
 # --- ticket parsing ---------------------------------------------------------
 # Flat YAML frontmatter between the first two --- fences. One "key: value" per
@@ -66,7 +74,7 @@ $role     = $fm['role']
 $modelRef = Split-ModelRef $fm['model']
 $harness  = Get-Harness -Provider $modelRef.Provider
 $base     = $fm['base']; if (-not $base) { $base = 'main' }
-$fallback = $fm['fallbackModels']   # may be empty; consumed by the watcher (ticket 05)
+$fallback = $fm['fallbackModels']   # comma-separated; empty means no failover
 
 # Roster roles are per-model slots ('builder-a', 'builder-b'); agent definitions
 # are per-job ('builder.md'). Resolve the exact name first, then the job prefix,
@@ -128,32 +136,6 @@ if ($DryRun) {
     return $plan
 }
 
-# --- herdr plumbing (mirrors herdr-build.ps1) -------------------------------
-function Invoke-Herdr {
-    param([string[]]$HerdrArgs)
-    $raw = & herdr @HerdrArgs 2>&1 | Out-String
-    try { $json = $raw | ConvertFrom-Json } catch { throw "herdr $($HerdrArgs -join ' ') returned non-JSON: $raw" }
-    if ($json.error) { throw "herdr $($HerdrArgs[0]) $($HerdrArgs[1]): $($json.error.message)" }
-    return $json.result
-}
-
-# Poll rather than `agent prompt --wait`: that matches the first state after
-# submission, so it misses an agent that has not started working yet.
-function Wait-Agent {
-    param([string]$Name, [int]$TimeoutMs = 1800000, [int]$PollMs = 2000)
-    $deadline = (Get-Date).AddMilliseconds($TimeoutMs)
-    $sawWorking = $false
-    $settled = @('idle', 'done', 'blocked')
-    while ((Get-Date) -lt $deadline) {
-        $status = (Invoke-Herdr @('agent', 'get', $Name)).agent.agent_status
-        if ($status -eq 'working') { $sawWorking = $true }
-        elseif ($status -eq 'blocked') { return 'blocked' }
-        elseif ($sawWorking -and $settled -contains $status) { return $status }
-        Start-Sleep -Milliseconds $PollMs
-    }
-    return 'timeout'
-}
-
 if (-not (Get-Command herdr -ErrorAction SilentlyContinue)) { throw "herdr not found." }
 if (-not (Test-Path "$HOME\.claude\scripts\herdr-autostart.ps1")) {
     throw "herdr-autostart.ps1 is missing; the pane would never start an agent."
@@ -167,46 +149,73 @@ $rootPane = $wt.root_pane.pane_id
 if (-not $wtPath -or -not $rootPane) { throw "unexpected worktree create response: $($wt | ConvertTo-Json -Depth 6)" }
 Write-Host "  $wtPath  (workspace $($wt.workspace.workspace_id))"
 
-# 2. a pane that starts pi itself on the ticket's provider+model. Same reason as
-# herdr-build.ps1 not to use `herdr agent start`: the Windows claude/pi shims.
-$pane = (Invoke-Herdr @('pane', 'split', $rootPane, '--direction', 'right',
-        '--cwd', $wtPath,
-        '--env', 'M2_AUTOSTART=pi',
-        '--env', "M2_PROVIDER=$($modelRef.Provider)",
-        '--env', "M2_MODEL=$($modelRef.Model)",
-        '--env', "M2_AUTOSTART_AGENT=$agentPrompt",
-        '--no-focus')).pane
-$paneId = $pane.pane_id
-Write-Host "Pane $paneId opening, waiting for the agent..." -ForegroundColor Cyan
-
-# 3. wait for detection, then name it. Accept any detected agent kind (pi
-# reports its own), not just 'claude'.
-$detectDeadline = (Get-Date).AddSeconds(90)
-$detected = $false
-while ((Get-Date) -lt $detectDeadline) {
-    $p = (Invoke-Herdr @('pane', 'get', $paneId)).pane
-    if ($p.agent) { $detected = $true; break }
-    Start-Sleep -Seconds 2
+# 2. start the agent, and be able to do it again on another model.
+function Start-Attempt {
+    param([Parameter(Mandatory)]$Ref)
+    $paneId = New-AgentPane -FromPane $rootPane -Cwd $wtPath -Provider $Ref.Provider -Model $Ref.Model -AgentPrompt $agentPrompt
+    Write-Host "Pane $paneId opening on $($Ref.Provider):$($Ref.Model), waiting for the agent..." -ForegroundColor Cyan
+    if (-not (Wait-PaneAgent -PaneId $paneId -Name $name)) {
+        throw "no agent detected in $paneId after 90s. Check herdr-autostart.ps1 is dot-sourced by the Windows PowerShell 5.1 profile - herdr spawns that shell, not pwsh."
+    }
+    Write-Host "Agent '$name' up on $($Ref.Provider):$($Ref.Model)" -ForegroundColor Green
+    Invoke-Herdr @('agent', 'prompt', $name, $parsed.Body) | Out-Null
+    Write-Host "Brief submitted." -ForegroundColor Green
+    return $paneId
 }
-if (-not $detected) {
-    throw "no agent detected in $paneId after 90s. Check herdr-autostart.ps1 is dot-sourced by the Windows PowerShell 5.1 profile - herdr spawns that shell, not pwsh."
-}
-Invoke-Herdr @('agent', 'rename', $paneId, $name) | Out-Null
-Write-Host "Agent '$name' up on $($modelRef.Provider):$($modelRef.Model)" -ForegroundColor Green
 
-# 4. hand it the brief
-Invoke-Herdr @('agent', 'prompt', $name, $parsed.Body) | Out-Null
-Write-Host "Brief submitted." -ForegroundColor Green
+$attempts = @($modelRef)
+foreach ($f in ($fallback -split ',')) {
+    $f = $f.Trim()
+    if ($f) { $attempts += (Split-ModelRef $f) }
+}
+
+$paneId = Start-Attempt -Ref $modelRef
 
 if ($NoWatch) {
     Write-Host ""
     Write-Host "Not waiting. Follow it with:  herdr agent read $name   /   herdr agent attach $name"
-    if ($fallback) { Write-Host "Fallback on quota death (ticket 05, not yet automated): re-dispatch with model $fallback" -ForegroundColor DarkGray }
+    if ($fallback) { Write-Host "Not watching means no fallback: a quota death will just sit there. Re-dispatch on $fallback by hand." -ForegroundColor DarkGray }
     return $plan
 }
 
-# 5. wait, surface blocked as the actionable state
-$status = Wait-Agent -Name $name -TimeoutMs $TimeoutMs
+# 3. watch, failing over on a provider death. One attempt per fallback level and
+# no further: if the fallback dies the same way, that is a wall, not a blip.
+$i = 0
+$deaths = 0
+$finishedOn = $null
+while ($true) {
+    $ref = $attempts[$i]
+    $line = ''
+    $status = Wait-Agent -Name $name -TimeoutMs $TimeoutMs -BaselineDeaths $deaths -DeathLine ([ref]$line)
+
+    if ($status -ne 'died') { $finishedOn = $ref; break }
+
+    $deaths++
+    Write-Host ""
+    Write-Host "$($ref.Provider):$($ref.Model) died: $line" -ForegroundColor Yellow
+    if ($i -ge ($attempts.Count - 1)) {
+        Invoke-Herdr @('notification', 'show', "$name died on $($ref.Provider):$($ref.Model) and has no fallback left") | Out-Null
+        Write-Host "No fallback left. The ticket is NOT done." -ForegroundColor Red
+        Write-Host "  herdr agent read $name"
+        $plan | Add-Member -NotePropertyName Outcome -NotePropertyValue 'died' -Force
+        $plan | Add-Member -NotePropertyName FinishedOn -NotePropertyValue $null -Force
+        return $plan
+    }
+    $i++
+    $next = $attempts[$i]
+    Write-Host "Failing over to $($next.Provider):$($next.Model)..." -ForegroundColor Yellow
+    # Close the dead pane rather than driving its TUI: the pi session is still
+    # alive and idle after the error, and re-prompting it would just hit the
+    # same provider again.
+    Invoke-Herdr @('pane', 'close', $paneId) | Out-Null
+    Start-Sleep -Seconds 2
+    $paneId = Start-Attempt -Ref $next
+}
+
+$ranOn = "$($finishedOn.Provider):$($finishedOn.Model)"
+$plan | Add-Member -NotePropertyName Outcome -NotePropertyValue $status -Force
+$plan | Add-Member -NotePropertyName FinishedOn -NotePropertyValue $ranOn -Force
+
 if ($status -eq 'blocked') {
     Invoke-Herdr @('notification', 'show', "$name is blocked and needs you") | Out-Null
     Write-Host ""; Write-Host "BLOCKED - $name needs an answer:  herdr agent attach $name" -ForegroundColor Yellow
@@ -216,8 +225,12 @@ if ($status -eq 'timeout') {
     Write-Host ""; Write-Host "Timed out. The agent is still running:  herdr agent read $name" -ForegroundColor Yellow
     return $plan
 }
-Invoke-Herdr @('notification', 'show', "$name finished ($status)") | Out-Null
+Invoke-Herdr @('notification', 'show', "$name finished ($status) on $ranOn") | Out-Null
 Write-Host ""; Write-Host "Finished: $status" -ForegroundColor Green
+# Named every time, not just after a failover: "it passed" means nothing without
+# knowing which model it passed on.
+if ($ranOn -eq "$($modelRef.Provider):$($modelRef.Model)") { Write-Host "Ran on $ranOn (the ticket's model)." }
+else { Write-Host "Ran on $ranOn - a FALLBACK, not the ticket's $($modelRef.Provider):$($modelRef.Model)." -ForegroundColor Yellow }
 Write-Host "Worktree: $wtPath  (branch $branch)"
 Write-Host "Verify the build yourself, then review:  review.ps1 -Ticket $Ticket -Verdict '<cmd> -> PASS'"
 return $plan
