@@ -35,14 +35,20 @@ The dispatch script derives the harness; nothing hard-codes it per role.
 ## Model roster
 
 Single source of truth, read by `to-tickets` (to stamp frontmatter) and available to a human reading a plan.
-Subscription provider first, OpenRouter pay-per-token as the quota fallback.
+Subscription provider first, OpenRouter as the quota fallback.
+The OpenRouter account is free-tier with no credits, so only `:free` ids and free stealth models are usable there.
+A paid id passes `pi auth check` and then dies at request time with a 402, which is why the fallback column names free models only.
 
 | Role | Harness | Primary | Fallback |
 |---|---|---|---|
 | planner | Claude Code | `claude-fable-5` (Anthropic Max) | `claude-opus-5`, then manual restart on pi |
-| builder A | pi | `glm-5.3` (zai coding plan) | `z-ai/glm-5.3` (OpenRouter) |
-| builder B | pi | `stealth/ox-alpha` (OpenRouter) | `z-ai/glm-5.3` (OpenRouter) |
-| reviewer | pi | `gpt-5.5` (openai-codex subscription) | `openai/gpt-5.5` (OpenRouter) |
+| builder A | pi | `glm-5.3` (zai coding plan) | `z-ai/glm-5.2:free` (OpenRouter) |
+| builder B | pi | `stealth/ox-alpha` (OpenRouter, free) | `z-ai/glm-5.2:free` (OpenRouter) |
+| reviewer | pi | `gpt-5.5` (openai-codex subscription) | none - see below |
+
+The reviewer has no OpenRouter fallback on purpose.
+Every `openai/gpt-5.x` id on OpenRouter is paid, so any fallback there would be a 402 mid-review.
+If `openai-codex` is unreachable, `review.ps1` fails loudly and the human falls back the way AGENTS.md describes: the Opus `reviewer` agent, run by hand, with the report saying it ran on the fallback and why.
 
 The planner picks builder A or B per ticket.
 The roster lives in one file (proposed: `~/.claude/roster.json`); the harness column is derived, not stored.
@@ -120,17 +126,20 @@ Three vendors, none reviewing its own code: planner is Anthropic, builders are G
 ## Research findings (resolved before build)
 
 1. Model selection: `pi --provider zai --model glm-5.3` routes correctly to GLM. WARNING: `--model zai/glm-5.3` matches no id and pi SILENTLY falls back to the default Anthropic model instead of erroring. The dispatch script must pass `--provider <p> --model <id>` from the roster and must not trust a bare `provider/id` string. Confirmed live: the wrong form answered "Claude, Anthropic"; the right form answered "GLM, Z.ai."
-2. Provider auth from this machine: `anthropic` (oauth), `zai` (api_key), `openrouter` (api_key) all report ready. `openai-codex` reports `not_ready: credentials_not_configured`. So the reviewer's subscription primary `gpt-5.5` (openai-codex) cannot run on pi until that provider is authenticated. Its OpenRouter fallback `openai/gpt-5.5` works today. A setup task must authenticate openai-codex in pi, or the reviewer defaults to the OpenRouter model.
+2. Provider auth from this machine: `anthropic` (oauth), `zai` (api_key), `openrouter` (api_key) all report ready. `openai-codex` reports `not_ready: credentials_not_configured`. So the reviewer's subscription primary `gpt-5.5` (openai-codex) cannot run on pi until that provider is authenticated. Ticket 02 is therefore load-bearing, not optional: the OpenRouter escape hatch does not exist (see finding 6).
 3. Panes: `herdr pane split --direction right --env KEY=VALUE --ratio <f> --no-focus` all exist. Reviewer-right and env passthrough are supported. Autostart must be extended past `pi`/`claude`/`glm` to carry an arbitrary provider+model+fallback set.
 4. The workflow package actively harms headless pi: a `[workflow-delivery]` shim fail-closed the `-p` send until `--no-extensions` was passed. Extra reason to uninstall it.
 5. Windows landmines from `README-glm.md` still apply: PowerShell 5.1 profile compatibility, `claude` vs `claude.cmd`, `pi` vs the extensionless shim.
+6. `pi auth check` says nothing about whether a model can actually be paid for. The OpenRouter account is free-tier, and a paid id fails only once the first request goes out: `402 ... requested up to 128000 tokens, but can only afford 1212`. Observed live in a reviewer pane on `openrouter:openai/gpt-5.5`. Fallbacks must name `:free` ids, and readiness checks must not be read as "this will work".
+7. A provider error does not move `agent_status`. The pane that died on the 402 sat at `idle` with the error printed in its output, so a status poll that waits for `working` first never returns. The fallback watcher (ticket 05) has to read pane output, not status.
+8. `herdr agent get <name>` returns `pane_id` directly, so resolving a builder's pane to split beside it is exact, not a guess.
 
 ## Proposed tickets
 
 See `pane-orchestration/tickets/` for the specified set. Summary:
 
 - Roster config file + harness-derivation helper (harness from provider).
-- Authenticate `openai-codex` in pi, or fix the reviewer default to the OpenRouter model.
+- Authenticate `openai-codex` in pi. There is no OpenRouter alternative on a free-tier account.
 - Generalize `herdr-build.ps1` into `dispatch.ps1` (frontmatter-driven, `--provider`+`--model`, any harness).
 - Extend `herdr-autostart.ps1` to carry an arbitrary provider+model+fallback set.
 - Script-driven fallback watcher: relaunch a dead session on its `fallbackModels` entry.

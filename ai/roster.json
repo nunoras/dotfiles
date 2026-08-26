@@ -1,6 +1,8 @@
 {
-  "planner":   { "primary": "anthropic:claude-fable-5",      "fallback": "anthropic:claude-opus-5" },
-  "builder-a": { "primary": "zai:glm-5.3",                   "fallback": "openrouter:z-ai/glm-5.3" },
-  "builder-b": { "primary": "openrouter:stealth/ox-alpha",   "fallback": "openrouter:z-ai/glm-5.3" },
-  "reviewer":  { "primary": "openai-codex:gpt-5.5",          "fallback": "openrouter:openai/gpt-5.5" }
+  "_note": "OpenRouter is a free-tier account with no credits: only ':free' models and free stealth models work there. A paid OpenRouter id fails at request time with a 402, not at auth time, so it looks authenticated right up until the pane dies.",
+
+  "planner":   { "primary": "anthropic:claude-fable-5",    "fallback": "anthropic:claude-opus-5" },
+  "builder-a": { "primary": "zai:glm-5.3",                 "fallback": "openrouter:z-ai/glm-5.2:free" },
+  "builder-b": { "primary": "openrouter:stealth/ox-alpha", "fallback": "openrouter:z-ai/glm-5.2:free" },
+  "reviewer":  { "primary": "openai-codex:gpt-5.5",        "fallback": null }
 }

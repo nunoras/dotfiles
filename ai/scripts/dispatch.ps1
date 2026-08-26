@@ -68,6 +68,26 @@ $harness  = Get-Harness -Provider $modelRef.Provider
 $base     = $fm['base']; if (-not $base) { $base = 'main' }
 $fallback = $fm['fallbackModels']   # may be empty; consumed by the watcher (ticket 05)
 
+# Roster roles are per-model slots ('builder-a', 'builder-b'); agent definitions
+# are per-job ('builder.md'). Resolve the exact name first, then the job prefix,
+# and refuse to launch a builder with no system prompt at all - autostart only
+# warns about a missing file, and the warning scrolls past inside the pane.
+function Resolve-AgentPrompt {
+    param([Parameter(Mandatory)][string]$Role)
+    $dir = Join-Path $HOME '.claude\agents'
+    $candidates = @($Role)
+    $dash = $Role.LastIndexOf('-')
+    if ($dash -ge 1) { $candidates += $Role.Substring(0, $dash) }
+    foreach ($c in $candidates) {
+        if (Test-Path (Join-Path $dir "$c.md")) { return $c }
+    }
+    throw "no agent definition for role '$Role': tried $((($candidates | ForEach-Object { "$_.md" }) -join ', ')) in $dir"
+}
+# Only the pi harness consumes it; the claude path is a stub, and the planner
+# has no agent definition because it is a person's session.
+$agentPrompt = $null
+if ($harness -eq 'pi') { $agentPrompt = Resolve-AgentPrompt -Role $role }
+
 $slug   = ([IO.Path]::GetFileNameWithoutExtension($Ticket)) -replace '[^\w\-]', '-'
 $slug   = $slug.Trim('-').ToLower()
 $name   = "disp-$slug"
@@ -79,6 +99,7 @@ $plan = [pscustomobject]@{
     Provider = $modelRef.Provider
     Model    = $modelRef.Model
     Harness  = $harness
+    AgentPrompt = $agentPrompt
     Fallback = $fallback
     Base     = $base
     Branch   = $branch
@@ -102,7 +123,7 @@ if ($harness -eq 'claude') {
 
 if ($DryRun) {
     Write-Host "DryRun: would create worktree '$branch' off '$base', split a pane running" -ForegroundColor Green
-    Write-Host "  pi -a --provider $($modelRef.Provider) --model $($modelRef.Model) --append-system-prompt <~/.claude/agents/$role.md>" -ForegroundColor Green
+    Write-Host "  pi -a --provider $($modelRef.Provider) --model $($modelRef.Model) --append-system-prompt <~/.claude/agents/$agentPrompt.md>" -ForegroundColor Green
     Write-Host "  then submit the ticket brief and watch." -ForegroundColor Green
     return $plan
 }
@@ -153,7 +174,7 @@ $pane = (Invoke-Herdr @('pane', 'split', $rootPane, '--direction', 'right',
         '--env', 'M2_AUTOSTART=pi',
         '--env', "M2_PROVIDER=$($modelRef.Provider)",
         '--env', "M2_MODEL=$($modelRef.Model)",
-        '--env', "M2_AUTOSTART_AGENT=$role",
+        '--env', "M2_AUTOSTART_AGENT=$agentPrompt",
         '--no-focus')).pane
 $paneId = $pane.pane_id
 Write-Host "Pane $paneId opening, waiting for the agent..." -ForegroundColor Cyan

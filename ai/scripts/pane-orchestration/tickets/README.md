@@ -27,9 +27,12 @@ Research is done; these are build tickets.
 | role | harness | primary | fallback |
 |---|---|---|---|
 | planner | Claude Code | `claude-fable-5` | `claude-opus-5`, then manual restart on pi |
-| builder A | pi | `zai:glm-5.3` | `openrouter:z-ai/glm-5.3` |
-| builder B | pi | `openrouter:stealth/ox-alpha` | `openrouter:z-ai/glm-5.3` |
-| reviewer | pi | `openai-codex:gpt-5.5` | `openrouter:openai/gpt-5.5` |
+| builder A | pi | `zai:glm-5.3` | `openrouter:z-ai/glm-5.2:free` |
+| builder B | pi | `openrouter:stealth/ox-alpha` | `openrouter:z-ai/glm-5.2:free` |
+| reviewer | pi | `openai-codex:gpt-5.5` | none - fail loudly, then the Opus `reviewer` agent by hand |
+
+The OpenRouter account is free-tier with no credits, so fallbacks name `:free` ids only.
+A paid id passes `pi auth check` and then dies mid-session with a 402.
 
 Harness is derived from provider: `anthropic` -> Claude Code, everything else -> pi.
 Models are written `provider:id` because `pi --model provider/id` silently mis-resolves; dispatch splits this into `--provider <p> --model <id>`.

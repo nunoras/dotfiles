@@ -4,7 +4,13 @@
 #
 # The roster itself lives in ai/roster.json (symlinked to ~/.claude/roster.json).
 # Model refs are written "provider:id". The id may contain slashes
-# (openrouter:z-ai/glm-5.3), so refs split on the FIRST colon only.
+# (openrouter:z-ai/glm-5.2:free), so refs split on the FIRST colon only.
+#
+# A role's fallback may be null: the reviewer has no second model, because every
+# GPT id on OpenRouter is paid and this account is free-tier only. Callers must
+# handle an empty Fallback rather than assume one exists.
+#
+# Keys starting with '_' are notes, not roles.
 #
 # Keep PowerShell 5.1 compatible: herdr spawns Windows PowerShell 5.1.
 # No ??, no ?., no ternary.
@@ -43,8 +49,12 @@ function Get-RosterEntry {
         [string]$Path
     )
     $roster = Get-Roster -Path $Path
-    $entry = $roster.$Role
-    if (-not $entry) { throw "unknown role '$Role' (roles: $(($roster.PSObject.Properties.Name) -join ', '))" }
+    $entry = $null
+    if (-not $Role.StartsWith('_')) { $entry = $roster.$Role }
+    if (-not $entry) {
+        $roles = @($roster.PSObject.Properties.Name | Where-Object { -not $_.StartsWith('_') })
+        throw "unknown role '$Role' (roles: $($roles -join ', '))"
+    }
     return [pscustomobject]@{
         Role     = $Role
         Primary  = $entry.primary

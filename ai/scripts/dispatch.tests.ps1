@@ -71,6 +71,25 @@ brief
 "@
 Assert-Eq (Get-Plan $t3).Harness 'pi' 'reviewer -> pi'
 
+Write-Host "role -> agent definition"
+$t5 = New-Ticket 'slotted.md' @"
+---
+role: builder-a
+model: zai:glm-5.3
+---
+brief
+"@
+Assert-Eq (Get-Plan $t5).AgentPrompt 'builder' 'roster slot builder-a falls back to builder.md'
+Assert-Eq (Get-Plan $t1).AgentPrompt 'builder' 'exact role name is preferred'
+$t6 = New-Ticket 'norole.md' @"
+---
+role: nonesuch
+model: zai:glm-5.3
+---
+brief
+"@
+Assert-Throws { & $dispatch -Ticket $t6 -Repo $tmp -DryRun } 'unknown role has no agent definition -> throws'
+
 Write-Host "validation"
 $bad1 = New-Ticket 'nofm.md' "no frontmatter here"
 Assert-Throws { & $dispatch -Ticket $bad1 -Repo $tmp -DryRun } 'missing frontmatter throws'

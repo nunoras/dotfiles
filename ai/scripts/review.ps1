@@ -99,10 +99,25 @@ if ($Model) {
     $primary = Split-ModelRef $entry.Primary
     if (Test-ProviderReady $primary.Provider) {
         $modelRef = $primary; $modelWhy = "roster primary"
-    } else {
+    } elseif ($entry.Fallback) {
         $modelRef = Split-ModelRef $entry.Fallback
         $modelWhy = "roster fallback ($($primary.Provider) not authenticated)"
         Write-Host "Reviewer primary provider '$($primary.Provider)' is not ready; using fallback $($entry.Fallback)." -ForegroundColor Yellow
+    } else {
+        throw @"
+The reviewer has no reachable model.
+
+Primary is $($entry.Primary) and provider '$($primary.Provider)' is not ready.
+There is no roster fallback on purpose: every GPT id on OpenRouter is paid, and
+this account is free-tier only, so an OpenRouter fallback would die on a 402
+mid-review instead of failing here.
+
+Either authenticate the primary provider, or fall back the way AGENTS.md
+describes - run the Opus 'reviewer' agent by hand, and say in the report that
+the review ran on the fallback and why.
+
+To review on some other model deliberately, pass -Model <provider:id>.
+"@
     }
 }
 

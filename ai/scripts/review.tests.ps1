@@ -58,13 +58,28 @@ $entry = Get-RosterEntry -Role 'reviewer'
 $primary = Split-ModelRef $entry.Primary
 $raw = pi auth check --provider $primary.Provider --no-refresh --json 2>&1 | Out-String
 $primaryReady = $false; try { $primaryReady = (($raw | ConvertFrom-Json).status -eq 'ready') } catch {}
-if ($primaryReady) { $expect = $primary; $why = 'roster primary' } else { $expect = Split-ModelRef $entry.Fallback; $why = 'fallback' }
-$p = Get-Plan @{ Verdict = 'npm test -> PASS' }
-Assert-Eq $p.Provider $expect.Provider "reviewer provider ($why)"
-Assert-Eq $p.Model    $expect.Model    "reviewer model ($why)"
-Assert-True ($p.ModelChoice -like "*$why*") "model choice explains itself ($why)"
+if ($primaryReady) {
+    $expect = $primary
+    $p = Get-Plan @{ Verdict = 'npm test -> PASS' }
+    Assert-Eq $p.Provider $expect.Provider 'reviewer provider (roster primary)'
+    Assert-Eq $p.Model    $expect.Model    'reviewer model (roster primary)'
+    Assert-True ($p.ModelChoice -like '*roster primary*') 'model choice explains itself (roster primary)'
+} elseif ($entry.Fallback) {
+    $expect = Split-ModelRef $entry.Fallback
+    $p = Get-Plan @{ Verdict = 'npm test -> PASS' }
+    Assert-Eq $p.Provider $expect.Provider 'reviewer provider (fallback)'
+    Assert-Eq $p.Model    $expect.Model    'reviewer model (fallback)'
+    Assert-True ($p.ModelChoice -like '*fallback*') 'model choice explains itself (fallback)'
+} else {
+    # Primary unreachable and no fallback by design: fail loudly rather than
+    # quietly reviewing on a model nobody chose.
+    Assert-Throws { & $review -Ticket $ticket -Repo $repo -Verdict 'npm test -> PASS' -DryRun } 'no primary and no fallback throws'
+}
 
+# Everything below is about the payload, not model choice, so pin the model and
+# stay independent of what happens to be authenticated on this machine.
 Write-Host "diff + task file"
+$p = Get-Plan @{ Verdict = 'npm test -> PASS'; Model = 'zai:glm-5.3' }
 Assert-True ($p.DiffChars -gt 0) 'diff collected non-empty'
 Assert-Eq $p.Truncated $false 'small diff not truncated'
 Assert-True (Test-Path $p.TaskFile) 'task file written'

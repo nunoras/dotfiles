@@ -26,8 +26,10 @@ Replace the Codex `gpt-review.ps1` shell-out with a pi reviewer that runs in a p
 ## Resolution
 
 - `ai/scripts/review.ps1`: reuses `gpt-review.ps1`'s prompt shape (intent + verdict + commits + files + diff, capped at `-MaxDiffBytes`) but writes it to a temp task file and runs pi in a pane split RIGHT of the builder, read-only.
-- Reviewer model comes from the roster `reviewer` role, not the builder ticket. Auth-aware: if the primary provider is not ready it uses the fallback and says why. Verified live - `openai-codex` is not authed, so it selected `openrouter:openai/gpt-5.5`.
+- Reviewer model comes from the roster `reviewer` role, not the builder ticket. Auth-aware: if the primary provider is not ready it uses the fallback and says why, and if there is no fallback it throws with the manual route spelled out.
+- The reviewer's OpenRouter fallback was removed after a live run: `openai-codex` is not authed, so it selected `openrouter:openai/gpt-5.5`, which died on `402 ... can only afford 1212` because the account is free-tier and that id is paid. See ticket 02.
 - Read-only enforced by a new `M2_READONLY` env consumed by `herdr-autostart.ps1` (`--exclude-tools write,edit,bash,powershell`). The task file is in temp, so the worktree stays clean.
 - `-Verdict` is a precondition (validated for PASS/FAIL/not-run), same rationale as `gpt-review.ps1`. Reviewer standards come from `reviewer.md` as the appended system prompt. The script prints `herdr agent read` and shouts RELAY VERBATIM; it never captures-and-softens.
-- `ai/scripts/review.tests.ps1`: 14 assertions (verdict validation, auth-aware model selection, diff collection, task-file contents, model override) against a real temp git repo. Pass on pwsh 7 and PS 5.1.
-- NOT verified automatically: the live pane split and the builder-pane resolution (`herdr agent get` field names are best-effort - `-BuilderPane <id>` is the explicit fallback). Needs a keyboard smoke test.
+- `ai/scripts/review.tests.ps1`: verdict validation, model selection across all three roster states, diff collection, task-file contents, model override, against a real temp git repo. The payload assertions pin `-Model` so they do not depend on what happens to be authenticated. Pass on pwsh 7 and PS 5.1.
+- Verified live: the pane really does open to the right of the builder, read-only, with `reviewer.md` appended. `herdr agent get <name>` returns `pane_id` directly, so builder-pane resolution is exact and `-BuilderPane` is only an override now.
+- Still unverified: an actual review coming out the other end. That is blocked on ticket 02 - there is currently no reachable reviewer model.
