@@ -28,14 +28,15 @@ Three subscriptions, split so that no model reviews its own work. Route by task,
 not by habit. Full setup and switches: `~/.claude/scripts/README-glm.md`.
 
 Since 2026-08-25 pi also runs Claude on the Max plan through `pi-claude-auth`
-(see the last section of that README for what it does and the risk it carries),
-and every new herdr tab starts pi. Claude Code is one `claude` away in that
-shell, or `$env:M2_AUTOSTART = 'claude'` on the pane.
+(see the last section of that README for what it does and the risk it carries).
+We switched from herdr to Orca (onorca.dev) as the multi-agent desktop:
+work happens in Orca worktrees with agent terminals, driven by the `orca` CLI.
+Claude Code is one `claude` away in any terminal.
 
 | job | who | how |
 |---|---|---|
 | planning, specs, architecture, grilling, debugging an unknown cause | Claude, fable-5 | this session, on Claude Code |
-| execution of an already-specified ticket | GLM-5.3 (z.ai) or ox-alpha (OpenRouter), on pi | `dispatch.ps1` into a herdr pane |
+| execution of an already-specified ticket | GLM-5.3 (z.ai) or ox-alpha (OpenRouter), on pi | dispatched into an Orca worktree + terminal |
 | independent review of a finished change | GPT-5.5 (ChatGPT subscription), on pi | `review.ps1`, split right of the builder |
 | review, only when GPT is unreachable | Claude, Opus | `reviewer` agent, by hand |
 | running builds and tests | Haiku | `test-runner` agent |
@@ -54,17 +55,19 @@ than doing it.
 
 ### The build loop
 
-One ticket per pane, dispatched by a person - the spend gate is human.
+One ticket per worktree, dispatched by a person - the spend gate is human.
+Orca gives each ticket its own git worktree and agent terminal; the orchestration layer (Tasks, decision gates) tracks them.
+
+Migration note (2026-08-26): the PowerShell scripts (`dispatch.ps1`, `review.ps1`) still target herdr panes and are being replaced by `orca-dispatch` (N:/GitHub/herdr-dispatch, repo rename pending). Until that lands, dispatch by hand: create a worktree in Orca, start the ticket's model in a terminal, paste the brief.
 
 1. `to-tickets` stamps each ticket with its role, model, and fallback from the
    roster. Never type a model id by hand: `pi --model <wrong-id>` does not
    error, it silently runs the default Anthropic model.
-2. `dispatch.ps1 -Ticket <file>` opens a worktree and a pane running that
-   ticket's model under `builder.md`, submits the brief, and watches.
+2. Dispatch the ticket into its own Orca worktree, running that ticket's model
+   under `builder.md`, and submit the brief.
 3. You verify the build yourself. That verdict is an input to the review, and
    it must be true.
-4. `review.ps1 -Ticket <file> -Verdict '<cmd> -> PASS'` splits the builder's
-   pane to the right and runs the reviewer read-only on the same worktree.
+4. Review runs read-only in a terminal split beside the builder, on the same worktree.
 5. Relay the review **verbatim**. Never paraphrase a reviewer - that replaces
    its judgement with yours, which is the one thing it exists to avoid.
    Blocking findings are the human's call, not the dispatcher's.
@@ -78,7 +81,7 @@ The reviewer has none either, on purpose - see the rules below.
 Three vendors are involved and none of them reviews code it wrote. That
 independence is the point of the arrangement, so protect it.
 
-Outside herdr the older route still works: `glm.ps1` for headless GLM on Claude
+Outside Orca the older route still works: `glm.ps1` for headless GLM on Claude
 Code, `gpt-review.ps1` for a review with no pane. See
 `~/.claude/scripts/README-glm.md`.
 
