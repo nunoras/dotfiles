@@ -33,6 +33,12 @@ stops.
   nearby, note it for the report. Do not fix it. An unrequested fix in a diff is
   the single most expensive thing you can hand a reviewer, because now they have
   to review two changes and can only reject both.
+- **Look up the verify command yourself.** The project's `CLAUDE.md` /
+  `AGENTS.md` maps path to verify command. Find the row for the paths you are
+  touching and run that. A brief may also name one, and then the brief wins -
+  but the absence of one in the brief is not permission to skip verifying. If
+  no row covers your paths and the brief is silent, stop and ask; do not invent
+  a check.
 - **Small verifiable steps.** After each meaningful change, run the relevant
   test or build. Do not write four files and then find out.
 - **Prefer the boring solution.** Existing helper over new abstraction. Explicit
@@ -43,7 +49,33 @@ stops.
 - **Never weaken a test to make it pass.** If a test fails, either the code is
   wrong or the test encodes a requirement you misread. Both mean stop and think.
   Deleting the assertion is not an option.
-- **Do not commit** unless you were explicitly told to.
+- **If you created or changed the verify command itself, prove it can fail.**
+  Break something on purpose, watch it report failure, then put it back. A
+  verify command is only worth its green result if you have seen it go red. This
+  is not paranoia: a build script that silently compiled nothing reported success
+  twice in a row, and both passing runs looked entirely normal.
+
+## Committing
+
+**Commit your work to your own branch when you are done and it verifies.**
+
+You are almost always dispatched into a git worktree on a branch of your own.
+There, the branch is the isolation, and leaving the change uncommitted buys
+nothing while costing a great deal:
+
+- the reviewer compares your branch against its base, and an uncommitted change
+  is invisible to it - it will report that there is nothing to review,
+- tearing the worktree down destroys unsaved work, so cleanup turns into a
+  trap for whoever does it,
+- and nobody can see what you did without your shell still being alive.
+
+One commit for the change unless it genuinely splits into separable pieces. Say
+in the message what now works that did not before, and why the change is shaped
+the way it is. Do not push, do not merge, do not touch any branch but your own.
+
+The exception: if you find yourself on a shared branch or in a tree that is not
+yours - `git status` shows changes you did not make - do not commit. Report that
+instead, and leave the tree as you found it.
 
 ## When to stop and ask
 
@@ -70,6 +102,9 @@ Changed
 
 Verified
 - <the command you ran, and its result>
+
+Committed
+- <branch> <short sha> - <subject>, or why you did not commit
 
 Not done / noticed
 - <anything in the ticket you did not complete, and why>

@@ -46,11 +46,29 @@ Before writing anything, get the real inputs:
   GLM does not have to guess or go hunting.
 - The existing pattern it should follow. If there is a sibling implementation,
   point at it by `path:line`. This is the single highest-value line in a brief.
-- How correctness gets checked. The test command, or the manual check.
+- How correctness gets checked. Look the verify command up in the project's
+  `CLAUDE.md` / `AGENTS.md` by the paths the ticket touches. Do not expect the
+  ticket to restate it, and do not make one up.
 
 If the ticket does not say what "done" means, **stop and ask the caller.** Do
 not invent acceptance criteria and do not send an under-specified brief. A GLM
 session given a vague brief burns the ticket and you learn nothing.
+
+### The takeable check - run it before you write a single line of brief
+
+A ticket labelled `ready-for-agent` is a claim, not a fact. Prove it:
+
+1. **Every path the ticket names exists in this repo.** `ls` them. A ticket
+   written against a directory layout that never existed cannot be built, and
+   the builder will spend its whole session discovering that.
+2. **A verify command exists for those paths.** It has a row in the project's
+   verify table. Without one there is no way to tell a finished ticket from a
+   broken one, and every downstream check becomes an opinion.
+
+If either fails, **stop. Do not dispatch.** Report which check failed and on
+which path, and ask the caller to relabel the ticket `needs-info`. This costs
+you a minute. Dispatching anyway costs a whole GLM session plus the review that
+follows it, and this has already happened to four tickets in a row.
 
 ## Step 2: write the brief
 
@@ -104,11 +122,17 @@ GLM's report is a claim, not evidence. Before relaying it:
 
 1. `git diff --stat` - did it actually change what it said it changed?
 2. `git status --short` - did it touch anything outside scope?
-3. Run the verify command yourself. If a `test-runner` agent is available,
-   delegate to it rather than reading the output into your own context.
+3. Run the verify command yourself - the one from the verify table, for every
+   path the diff actually touched, not only the ones the ticket predicted. If a
+   `test-runner` agent is available, delegate to it rather than reading the
+   output into your own context.
 
 A report that says "tests pass" against a working tree where they do not is the
 main failure mode of this whole arrangement. You are the check on it.
+
+**Write down each command and its verdict, exactly as it came back.** You are
+about to be the only party in this arrangement that has actually run anything,
+and Step 5 depends on you having those lines.
 
 ## Step 5: get it reviewed by GPT
 
@@ -116,11 +140,30 @@ Once the change is built and you have verified it yourself, hand it to an
 independent reviewer on a third vendor:
 
 ```
-pwsh -NoProfile -File "$HOME/.claude/scripts/gpt-review.ps1" -Base <base-branch> -Context "<the brief you wrote in step 2>"
+pwsh -NoProfile -File "$HOME/.claude/scripts/gpt-review.ps1" -Base <base-branch> -Context @'
+<the brief you wrote in step 2>
+'@ -BuildVerdict @'
+<verify command>  ->  PASS
+<verify command>  ->  FAIL
+<verify command>  ->  not run: <why>
+'@
 ```
 
-Pass the same brief you gave the builder. The reviewer needs the intent to
-judge spec drift, and without it can only check correctness.
+Pass the same brief you gave the builder as `-Context`. The reviewer needs the
+intent to judge spec drift, and without it can only check correctness.
+
+`-BuildVerdict` is the lines you wrote down at the end of Step 4, one per
+command, verbatim. The script refuses to run without it and refuses a line that
+states no outcome, so there is nothing to remember here beyond having actually
+run the commands. It writes the "treat this as given, you cannot execute
+anything, do not report a missing verdict as a finding" framing into the prompt
+itself - do not restate that in `-Context`.
+
+GPT runs read-only and, on this machine, with no working sandbox at all. Left
+without a verdict it reports "no compiler verdict" and reviews around a hole,
+which is why the parameter is mandatory. If a command did not run, say so as
+`not run: <why>` - never drop the row, and never write PASS for something you
+did not watch pass.
 
 The value here is that three different models are now involved and none of them
 wrote the code the next one is judging. Protect that:

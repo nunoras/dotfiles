@@ -13,7 +13,12 @@
 param(
     [string]$Prompt,
     [string]$Agent,
-    [string]$Model = "glm-5.2",
+    # An alias, not a raw GLM name. Claude Code validates --model against its
+    # own aliases and hard-fails an unknown string with unrecognized_model and
+    # exit 1, which is what "glm-5.2" here did. "sonnet" is recognised, and
+    # glm-env.ps1's ANTHROPIC_DEFAULT_SONNET_MODEL maps it to GLM-5.2 - the
+    # mapping README-glm.md already documents.
+    [string]$Model = "sonnet",
     [string]$PermissionMode = "acceptEdits",
     [string[]]$AllowedTools,
     [string]$OutputFormat,
@@ -24,31 +29,12 @@ param(
 $ErrorActionPreference = 'Stop'
 
 # A shell opened before the key was set will not have it in its process
-# environment. Fall back to user scope rather than failing for no reason.
-$key = $env:ZAI_API_KEY
-if (-not $key) { $key = [Environment]::GetEnvironmentVariable('ZAI_API_KEY', 'User') }
-if (-not $key) { $key = [Environment]::GetEnvironmentVariable('ZAI_API_KEY', 'Machine') }
-if (-not $key) {
-    throw "ZAI_API_KEY is not set. See $HOME\.claude\scripts\README-glm.md"
-}
-
-$env:ANTHROPIC_BASE_URL             = "https://api.z.ai/api/anthropic"
-$env:ANTHROPIC_AUTH_TOKEN           = $key
-$env:ANTHROPIC_DEFAULT_HAIKU_MODEL  = "GLM-4.7"
-$env:ANTHROPIC_DEFAULT_SONNET_MODEL = "GLM-5.2"
-$env:ANTHROPIC_DEFAULT_OPUS_MODEL   = "GLM-5.2"
-
-# If an Anthropic key is present it can win over ANTHROPIC_AUTH_TOKEN and send
-# the request to Anthropic, on Anthropic's bill, silently. Drop it.
-if (Test-Path Env:\ANTHROPIC_API_KEY) { Remove-Item Env:\ANTHROPIC_API_KEY }
-
-# Claude Code does not know GLM's window, so without this it assumes 200k and
-# auto-compacts a session that had 800k of room left. z.ai documents GLM-5.2 at
-# 1M input / 128k output.
-$env:CLAUDE_CODE_MAX_CONTEXT_TOKENS = "$ContextTokens"
-
-# Read by statusline-rich.ps1 to badge the session.
-$env:M2_VENDOR = "glm"
+# environment, which is why glm-env.ps1 falls back to user scope.
+#
+# The environment lives in glm-env.ps1 so that this script and the herdr pane
+# flow cannot drift apart on what a GLM session actually is.
+. (Join-Path $PSScriptRoot 'glm-env.ps1') -ContextTokens $ContextTokens
+$key = $env:ANTHROPIC_AUTH_TOKEN
 
 if ($WhatIfEnv) {
     [pscustomobject]@{
