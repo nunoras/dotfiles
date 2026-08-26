@@ -15,6 +15,11 @@ function Assert-Eq {
         $script:failures++
     }
 }
+function Assert-True {
+    param($Actual, [string]$Name)
+    if ($Actual) { Write-Host "  PASS  $Name" }
+    else { Write-Host "  FAIL  $Name -> expected true" -ForegroundColor Red; $script:failures++ }
+}
 function Assert-Throws {
     param([scriptblock]$Block, [string]$Name)
     $threw = $false
@@ -54,6 +59,22 @@ Write-Host "Get-RoleHarness"
 Assert-Eq (Get-RoleHarness -Role 'planner')   'claude' 'planner -> claude'
 Assert-Eq (Get-RoleHarness -Role 'builder-a') 'pi'     'builder-a -> pi'
 Assert-Eq (Get-RoleHarness -Role 'reviewer')  'pi'     'reviewer -> pi'
+
+Write-Host "Get-RosterFrontmatter"
+$fmA = Get-RosterFrontmatter -Role 'builder-a'
+Assert-True ($fmA -match '(?m)^role: builder-a$')                            'stamps the role slot verbatim'
+Assert-True ($fmA -match '(?m)^model: zai:glm-5\.3$')                        'stamps the roster primary as provider:id'
+Assert-True ($fmA -match '(?m)^fallbackModels: openrouter:z-ai/glm-5\.2:free$') 'stamps the roster fallback'
+Assert-True ($fmA -match '(?m)^base: main$')                                 'base defaults to main'
+$fmB = Get-RosterFrontmatter -Role 'builder-b' -Base 'develop'
+Assert-True ($fmB -match '(?m)^base: develop$')                              'base is overridable'
+Assert-True ($fmB -match '(?m)^model: openrouter:stealth/ox-alpha$')         'builder-b primary'
+# The reviewer has no fallback on purpose, so the key must be absent rather
+# than present and empty - dispatch treats an empty value as "no fallback"
+# either way, but a bare key reads like an oversight.
+$fmR = Get-RosterFrontmatter -Role 'reviewer'
+Assert-True ($fmR -notmatch 'fallbackModels')                                'no fallback key when the roster has none'
+Assert-Throws { Get-RosterFrontmatter -Role 'nope' }                         'unknown role throws'
 
 Write-Host ""
 if ($failures -gt 0) { Write-Host "$failures failure(s)" -ForegroundColor Red; exit 1 }

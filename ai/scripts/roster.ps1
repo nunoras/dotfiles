@@ -82,6 +82,34 @@ function Split-ModelRef {
     }
 }
 
+function Get-RosterFrontmatter {
+    # Role -> the dispatch frontmatter lines for a ticket, straight from the
+    # roster. Exists so `to-tickets` never has to retype a model id: a wrong one
+    # does not fail, it silently runs the default Anthropic model.
+    #
+    #   Get-RosterFrontmatter -Role builder-a
+    #   role: builder-a
+    #   model: zai:glm-5.3
+    #   fallbackModels: openrouter:z-ai/glm-5.2:free
+    #   base: main
+    param(
+        [Parameter(Mandatory)][string]$Role,
+        [string]$Base = 'main',
+        [string]$Path
+    )
+    $entry = Get-RosterEntry -Role $Role -Path $Path
+    # Validates the refs as a side effect: a malformed roster fails here rather
+    # than inside a pane an hour later.
+    Split-ModelRef $entry.Primary | Out-Null
+    $lines = @("role: $Role", "model: $($entry.Primary)")
+    if ($entry.Fallback) {
+        Split-ModelRef $entry.Fallback | Out-Null
+        $lines += "fallbackModels: $($entry.Fallback)"
+    }
+    $lines += "base: $Base"
+    return ($lines -join "`n")
+}
+
 function Get-RoleHarness {
     # Convenience: role -> harness of its primary model.
     param(
