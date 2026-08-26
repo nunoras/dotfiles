@@ -1,9 +1,9 @@
 {
-  "lastChangelogVersion": "0.78.0",
+  "lastChangelogVersion": "0.84.3",
   "defaultProvider": "anthropic",
   "defaultModel": "claude-opus-4-8",
-  "defaultThinkingLevel": "xhigh",
-  "theme": "dark",
+  "defaultThinkingLevel": "medium",
+  "theme": "cc-dark-contrast",
   "images": {
     "blockImages": false
   },
@@ -12,6 +12,19 @@
     "showTerminalProgress": true
   },
   "packages": [
-    "npm:pi-mcp-adapter"
+    "npm:pi-mcp-adapter",
+    "git:github.com/pankajudhas81/pi-claude-auth",
+    "npm:pi-cc-extensions"
+  ],
+  "defaultProjectTrust": "always",
+  "defaultTools": [
+    "read",
+    "bash",
+    "powershell",
+    "edit",
+    "write",
+    "grep",
+    "find",
+    "ls"
   ]
 }

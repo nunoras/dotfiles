@@ -1,7 +1,7 @@
 ---
 id: 08
 title: Uninstall /workflows and scrub references
-status: open
+status: done
 blocked_by: []
 ---
 
@@ -21,3 +21,11 @@ Remove the `pi-dynamic-workflows` engine and everything that only exists for it.
 
 - `pi list` no longer shows the workflow package, and `--list-models`/headless `-p` run clean without `--no-extensions`.
 - No dangling references to `/workflows` or `workflow-*` skills in AGENTS.md or the orchestrator skill.
+
+## Resolution
+
+- `pi remove npm:@quintinshaw/pi-dynamic-workflows` removed the package; `@quintinshaw` node_modules is now empty, so `workflow-authoring` / `workflow-patterns` are gone with it.
+- `pi/extensions/workflow-liveness.ts` deleted. It was untracked in git (only on disk), so its removal is not in the repo history - it is simply gone from the live env.
+- Verified: headless `pi -p` returns clean output WITHOUT `--no-extensions`; the `[workflow-delivery]` shim no longer fires.
+- No scrub needed: the two "workflow" hits in AGENTS.md and the orchestrator skill refer to Matt Pocock's dev lifecycle and to "workflow preferences," not the package. Left untouched.
+- `pi/settings.json` also picked up pre-existing live-config drift (version, theme, thinking, defaultProjectTrust, defaultTools) that had never been committed, since pi writes through the symlink. Synced in the same commit.
