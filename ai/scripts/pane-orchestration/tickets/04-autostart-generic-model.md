@@ -1,7 +1,7 @@
 ---
 id: 04
 title: Extend herdr-autostart for arbitrary provider+model+fallback
-status: open
+status: done
 blocked_by: [01]
 ---
 
@@ -21,3 +21,11 @@ Teach `herdr-autostart.ps1` to start a pi session on an arbitrary provider+model
 
 - Opening a pane with `M2_PROVIDER/M2_MODEL` set starts pi on exactly that model.
 - The existing `pi` / `claude` / `glm` defaults still work unchanged.
+
+## Resolution
+
+- `herdr-autostart.ps1` pi branch now reads `M2_PROVIDER`, `M2_MODEL`, `M2_AUTOSTART_AGENT`, clears them (no nested inheritance), and launches `pi -a --provider <p> --model <id> [--append-system-prompt ~/.claude/agents/<role>.md]`.
+- No fallback flag is passed - pi has none; the watcher (ticket 05) owns fallback by re-dispatching. `M2_FALLBACK` is not consumed here.
+- With no `M2_PROVIDER`/`M2_MODEL` the branch is byte-for-byte the old `& $__pi -a`, so the plain `pi` / `claude` / `glm` defaults are unchanged.
+- Verified: `pi --append-system-prompt <file>` reads file contents (a codeword planted in a temp file came back). Syntax parses under PowerShell 5.1.
+- NOT verified automatically: a real herdr pane actually launching this. Exercised by `dispatch.ps1` at the keyboard.
