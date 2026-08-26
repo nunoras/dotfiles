@@ -1,4 +1,0 @@
-interface:
-  display_name: "Orchestrator"
-  short_description: "Coordinate phased agents with human updates"
-  default_prompt: "Use $orchestrator to run a phase-gated multi-agent implementation from a local spec with human-readable updates."

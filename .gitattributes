@@ -1,0 +1,43 @@
+# Line endings and binary detection.
+#
+# Text is stored LF in the repository and checked out however the platform
+# wants it. Without this, whether a file lands as CRLF depends on each clone's
+# core.autocrlf, so the same file can come back as a whole-file diff on another
+# machine.
+#
+# Some files must stay LF even on Windows, because something other than git
+# reads them: a `#!/bin/sh` script with CRLF fails with a "bad interpreter"
+# error that names a line ending nobody can see.
+
+* text=auto
+
+# Shell scripts and anything with a shebang - LF, always.
+*.sh        text eol=lf
+*.bash      text eol=lf
+*.mjs       text eol=lf
+*.js        text eol=lf
+*.ts        text eol=lf
+*.py        text eol=lf
+
+# Windows-only, and read by tools that are fine either way.
+*.ps1       text
+*.psm1      text
+*.cmd       text eol=crlf
+*.bat       text eol=crlf
+
+# Binary: never diffed, never converted. Git usually detects these, but a font
+# or an exe misdetected as text gets corrupted on checkout, and that failure is
+# both silent and hard to trace back to here.
+*.exe       binary
+*.dll       binary
+*.ttf       binary
+*.otf       binary
+*.woff      binary
+*.woff2     binary
+*.png       binary
+*.jpg       binary
+*.jpeg      binary
+*.gif       binary
+*.ico       binary
+*.pdf       binary
+*.zip       binary

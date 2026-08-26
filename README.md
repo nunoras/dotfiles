@@ -64,7 +64,7 @@ Claude Code reads `ai/skills`, pi reads `pi/skills`, and neither reads the other
 They are not two copies of one set: `orchestrator` exists in both with deliberately different content, because the two harnesses need different instructions.
 
 Three skills are mirrored across both because both harnesses need them and they are harness-agnostic prose: `grilling`, `grill-with-docs`, `domain-modeling`.
-Edit one, edit the other.
+Edit one, edit the other - `pwsh -File ai/scripts/skills-mirror.tests.ps1` fails if you forget.
 Dropping the copy from one side breaks whichever harness is documented to use it - AGENTS.md puts `grilling` at step 1 of the pipeline, and the planner runs on Claude Code.
 
 ## Setup on a new machine
