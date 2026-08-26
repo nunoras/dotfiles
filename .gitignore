@@ -6,8 +6,12 @@ secrets/
 **/credentials*
 **/token*
 
-# Backups created by install.ps1
+# Backups created by install.ps1, and hand-made ones beside a config
 *.bak-*
+*.bak
+
+# Scratch files a session dropped in the repo root
+.brain_brief_*.txt
 
 # Skills symlinked in from a machine-local install (~/.agents/skills). Committing
 # the link would hand other machines a dead path - copy the real files in if one
