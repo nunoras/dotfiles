@@ -35,6 +35,8 @@
 #   $env:M2_MODEL    = 'glm-5.3'      -> pi launches with --model glm-5.3
 #   $env:M2_AUTOSTART_AGENT = 'builder' -> ~/.claude/agents/builder.md is
 #                                       appended to the system prompt
+#   $env:M2_READONLY = '1'            -> pi launches with write/edit/bash/
+#                                       powershell excluded (reviewer panes)
 # Provider+model must be passed as separate flags: `pi --model zai/glm-5.3`
 # matches no id and silently falls back to the default Anthropic model.
 #
@@ -72,7 +74,8 @@ if ($__herdrPaneShell -and (-not $env:M2_NO_AUTOSTART)) {
             $__provider = $env:M2_PROVIDER
             $__model    = $env:M2_MODEL
             $__agent    = $env:M2_AUTOSTART_AGENT
-            Remove-Item Env:\M2_PROVIDER, Env:\M2_MODEL, Env:\M2_AUTOSTART_AGENT -ErrorAction SilentlyContinue
+            $__readonly = $env:M2_READONLY
+            Remove-Item Env:\M2_PROVIDER, Env:\M2_MODEL, Env:\M2_AUTOSTART_AGENT, Env:\M2_READONLY -ErrorAction SilentlyContinue
 
             # -a trusts the cwd's .pi files without asking. Combined with
             # defaultProjectTrust=always in settings.json and bash-guard defaulting
@@ -90,6 +93,8 @@ if ($__herdrPaneShell -and (-not $env:M2_NO_AUTOSTART)) {
                     if (Test-Path $__af) { $__piArgs += @('--append-system-prompt', $__af) }
                     else { Write-Warning "M2_AUTOSTART_AGENT=$__agent but $__af is missing" }
                 }
+                # Read-only reviewer pane: no mutation or command execution.
+                if ($__readonly) { $__piArgs += @('--exclude-tools', 'write,edit,bash,powershell') }
                 & $__pi @__piArgs
             }
             else { Write-Warning 'autostart wanted pi, but pi is not on PATH' }
