@@ -46,6 +46,12 @@ The roster is `ai/roster.json` and it is the source of truth for that table.
 The harness is derived from the model's provider: `anthropic` runs on Claude
 Code, everything else runs on pi.
 
+Don't confuse the two orchestration skills. `orchestrator` (pi) governs this
+session: subagents, context hygiene, discipline. `orchestration` (Orca) is for
+cross-agent coordination across Orca worktrees - tasks, dispatches, decision
+gates. In-session work stays with the former; worktree-per-ticket dispatch uses
+the latter.
+
 The dividing line is **decisions versus execution**. Anything still needing a
 decision stays with the planner, because a wrong turn there costs several
 sessions. Once the decisions are in the ticket, the work goes to a builder.
