@@ -1,6 +1,0 @@
-# This plugin runs under Git Bash. Every script must stay LF, or a CRLF checkout
-# breaks the shebang and reintroduces the exact \r the jq wrapper exists to strip.
-* text eol=lf
-*.exe binary
-*.jpg binary
-*.png binary
