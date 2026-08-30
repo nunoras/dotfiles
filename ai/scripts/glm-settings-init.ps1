@@ -3,10 +3,10 @@
 # Run once, by hand:
 #   pwsh -File "$HOME\.claude\scripts\glm-settings-init.ps1"
 #
-# Why this file exists: `herdr agent start --kind claude` launches claude in a
+# Why this file exists: a launcher that starts claude for you launches it in a
 # pane and gives no way to set environment variables for it. The alternative is
-# `herdr pane split --env ANTHROPIC_AUTH_TOKEN=<key>`, which puts the key on a
-# command line and into herdr's socket API call. A settings file keeps it on
+# a terminal-level `--env ANTHROPIC_AUTH_TOKEN=<key>`, which puts the key on a
+# command line and into that launcher's API call. A settings file keeps it on
 # disk instead, readable only by you, and `claude --settings <file>` picks it up.
 #
 # The generated file holds a live credential. It is written outside the dotfiles

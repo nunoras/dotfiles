@@ -1,59 +1,58 @@
 ---
 name: to-tickets
-description: Split a plan or spec into tickets, each stamped with the model that will build it. Local override of the mattpocock-skills to-tickets - use this one, not the plugin copy.
+description: Split a plan or spec into tickets, each stamped with the role that will build it. Local override of the mattpocock-skills to-tickets - use this one, not the plugin copy.
 disable-model-invocation: true
 ---
 
-# To Tickets (roster-aware)
+# To Tickets (roster-aware, GitHub)
 
 Run the `mattpocock-skills:to-tickets` skill for the whole breakdown: tracer-bullet vertical slices, blocking edges, the quiz, expand-contract for wide refactors.
 None of that changes.
 
-This override changes two things: where tickets land, and what their frontmatter says.
+This override changes two things: where tickets land, and how they carry dispatcher info.
 
 ## Where tickets land
 
-Not `.scratch/`.
-Tickets live beside the spec they came from, in `<spec-dir>/<feature-slug>/tickets/`, one `.md` per ticket numbered from `01` in dependency order.
-Add a `README.md` in that directory as the index, carrying the ticket table and a copy of the roster table.
+GitHub Issues in this repo, per `docs/agents/issue-tracker.md`. Use the `gh` CLI; infer the repo from `git remote -v`.
 
-## Frontmatter
+- One issue per ticket, created in dependency order so numbers roughly follow order.
+- Blocking edges use GitHub's native issue dependencies (`gh api --method POST repos/<owner>/<repo>/issues/<child>/dependencies/blocked_by -F issue_id=<blocker-db-id>`), where `<blocker-db-id>` is the blocker's numeric database id (`gh api repos/<owner>/<repo>/issues/<n> --jq .id`).
+- Label each ticket `ready-for-agent` once it is fully specified, or leave it unlabelled and let `/triage` handle it if it still needs decisions.
+- Do not create a local `tickets/` folder or a README index. The issue list is the index.
 
-`dispatch.ps1` reads a ticket's frontmatter to decide which model builds it and on which harness, so every ticket needs it:
+## Dispatcher info in the issue body
+
+orca-dispatch reads a ticket's dispatcher info from a fenced block at the top of the issue body:
 
 ```markdown
----
-id: 04
-title: Short descriptive name
-status: open
-blocked_by: [01, 03]
-role: builder-a
+<!-- dispatch frontmatter (orca-dispatch reads this) -->
+```
+role: builder
 model: zai:glm-5.3
 fallbackModels: openrouter:z-ai/glm-5.2:free
 base: main
----
+```
 ```
 
-`id`, `title`, `status` (`open` | `claimed` | `done`), and `blocked_by` are the tracker's.
-`role`, `model`, `fallbackModels`, and `base` are the dispatcher's, and they come from the roster.
+Omit the `fallbackModels` line entirely for a role that has none.
+Do not include tracker fields (`id`, `status`, `blocked_by`) - the issue number, open/closed state, and native dependencies are those now.
 
 **Do not type model ids by hand.** Get them from the roster:
 
 ```powershell
 . "$HOME\.claude\scripts\roster.ps1"
-Get-RosterFrontmatter -Role builder-a          # -Base develop if the ticket branches off something else
+Get-RosterFrontmatter -Role builder          # -Base develop if the ticket branches off something else
 ```
 
-That prints the four dispatcher lines ready to paste, omitting `fallbackModels` for a role that has none.
+That prints the four dispatcher lines ready to paste.
 It is a command and not a lookup table on purpose: `pi --model <wrong-id>` does not error, it silently runs the default Anthropic model, so a typo here produces a builder that looks fine and is the wrong vendor.
 
 ## Choosing the role
 
-You pick `builder-a` or `builder-b` per ticket; the roster maps that slot to a model.
-Spread the work rather than defaulting every ticket to one slot - two builders on one subscription each is the point of having two.
+Every execution ticket gets `role: builder`; the roster maps that role to a model.
 
-Tickets that are mostly judgement rather than execution do not get a builder at all.
-Say so in the ticket and leave it for the planner's own session.
+Tickets that are mostly judgement rather than execution do not get a dispatcher block at all.
+Say so in the ticket body and leave it for the planner's own session.
 
 Read the roster before you start, since the slots change:
 

@@ -3,8 +3,7 @@
 
   "_note": "Model refs are 'provider:id'; the id may contain colons and slashes, so refs split on the FIRST colon only. 'fallback' is a comma-separated chain tried left to right - the dispatcher splits it, and one attempt per level is all it gets. Harness is derived from the provider, never stored: anthropic -> Claude Code, codex -> codex, agy -> Antigravity, everything else -> pi. Note 'openai-codex' is not 'codex' and derives to pi.",
   "_note_openrouter": "Free-tier account, no credits. A paid OpenRouter id passes auth and then dies at request time with a 402. ':free' ids are not reliable either: z-ai/glm-5.2:free returns 429 from the shared upstream pool under load (orca-dispatch findings #13). Check a free id live before trusting it as a fallback.",
-  "_note_builders": "builder-a and builder-b are two parallel slots, not two vendors. openrouter:stealth/ox-alpha was retired on 2026-08-26 and turned out to have been a ZAI GLM-5.3 all along, so it never gave the independence its slot implied (findings #12). Both slots now run the same chain. They exist to run two worktrees at once, nothing more.",
-  "_note_selfreview": "No model reviews its own work. With both builders on ZAI, review must come from openai-codex or anthropic - never from zai or an OpenRouter ZAI id. The reviewer chain is gpt-5.5 then claude-opus-5 (orca-dispatch #10, findings #56); the fallback is declared here so it is a chosen reviewer, and a review that ran on it says so.",
+  "_note_selfreview": "No model reviews its own work. With the builder on ZAI, review must come from openai-codex or anthropic - never from zai or an OpenRouter ZAI id. The reviewer chain is gpt-5.5 then claude-opus-5 (orca-dispatch #10, findings #56); the fallback is declared here so it is a chosen reviewer, and a review that ran on it says so.",
 
   "policy": {
     "spendGate": "human",
@@ -15,8 +14,7 @@
 
   "roles": {
     "planner":   { "model": "anthropic:claude-fable-5", "fallback": "anthropic:claude-opus-5" },
-    "builder-a": { "model": "zai:glm-5.3",              "fallback": "zai:glm-5.3-flash,openrouter:z-ai/glm-5.2:free" },
-    "builder-b": { "model": "zai:glm-5.3",              "fallback": "zai:glm-5.3-flash,openrouter:z-ai/glm-5.2:free" },
+    "builder":   { "model": "zai:glm-5.3",              "fallback": "zai:glm-5.3-flash,openrouter:z-ai/glm-5.2:free" },
     "reviewer":  { "model": "openai-codex:gpt-5.5",     "fallback": "anthropic:claude-opus-5" }
   }
 }

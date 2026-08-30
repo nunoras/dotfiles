@@ -6,7 +6,7 @@
 # mechanism is the --append-system-prompt-file flag, which means the flag has
 # to be present at every launch - hence this shim.
 #
-# Dot-sourced from both PowerShell profiles, because herdr spawns Windows
+# Dot-sourced from the PowerShell profile, because Windows
 # PowerShell 5.1 for its panes rather than pwsh 7, and those read different
 # profile paths. Keep this file 5.1 compatible: no ??, no ?., no ternary.
 #

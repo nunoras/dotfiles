@@ -35,7 +35,6 @@ things that **actually exist** become options.
 | 11 | Oh My Posh theme | `$env:POSH_THEMES_PATH` / custom `.omp.json` | `~/.config/ohmyposh/` |
 | 12 | Claude - status line | `~\.claude\statusline-*.ps1` | `~/.claude/statusline-*` |
 | 13 | Claude - hooks | `~\.claude\hooks\` | `~/.claude/hooks/` |
-| 14 | Herdr - config | `%APPDATA%\herdr\config.toml` | `~/.config/herdr/config.toml` |
 
 Only collect hooks (#13) that `settings.json` actually references. The rest are
 dropped there by other tools (plugin self-healers and the like) and are not ours
@@ -72,7 +71,6 @@ Preserve subfolder structure for directories.
 | Claude settings | `claude/settings.json` - rewrite any `C:\Users\<name>\...` path inside it as `$HOME/...`, so the file stays usable on machines with a different username |
 | Claude status line | `claude/statusline-rich.ps1` |
 | Claude hooks | `claude/hooks/` |
-| Herdr config | `herdr/config.toml` |
 | Claude skills | `ai/skills/` |
 | Claude subagents | `ai/agents/` |
 | Claude commands | `claude/commands/` |

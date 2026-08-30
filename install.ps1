@@ -279,6 +279,7 @@ New-RepoSymlink "$HOME\.claude\scripts"       "$RepoRoot\ai\scripts"
 # Model roster for pane orchestration -- read by the dispatch scripts and the
 # to-tickets skill. A well-known path so non-PowerShell consumers find it too.
 New-RepoSymlink "$HOME\.claude\roster.json"   "$RepoRoot\ai\roster.json"
+New-RepoSymlink "$HOME\.pi\agent\roster.json" "$RepoRoot\ai\roster.json"
 New-RepoSymlink "$HOME\.claude\settings.json" "$RepoRoot\claude\settings.json"
 
 # Claude Code status line (settings.json points at this path)
@@ -286,12 +287,7 @@ New-RepoSymlink "$HOME\.claude\statusline-rich.ps1" "$RepoRoot\claude\statusline
 
 # Claude Code hooks -- linked file by file, so hooks that other tools drop into
 # ~/.claude/hooks (plugin self-healers, etc.) are left alone.
-New-RepoSymlink "$HOME\.claude\hooks\herdr-agent-state.ps1" "$RepoRoot\claude\hooks\herdr-agent-state.ps1"
-New-RepoSymlink "$HOME\.claude\hooks\herdr-tab-title.ps1"   "$RepoRoot\claude\hooks\herdr-tab-title.ps1"
 New-RepoSymlink "$HOME\.claude\hooks\unslop-always.ps1"     "$RepoRoot\claude\hooks\unslop-always.ps1"
-
-# Herdr (terminal workspace manager) -- keybindings + UI prefs
-New-RepoSymlink "$env:APPDATA\herdr\config.toml" "$RepoRoot\herdr\config.toml"
 
 # Zed (Windows-native GUI app)
 New-RepoSymlink "$env:APPDATA\Zed\settings.json" "$RepoRoot\zed\settings.json"
@@ -304,23 +300,12 @@ New-RepoSymlink "$HOME\Documents\PowerShell\Microsoft.PowerShell_profile.ps1" `
 New-RepoSymlink "$HOME\Documents\PowerShell\theme.omp.json" `
                 "$RepoRoot\shell\theme.omp.json"
 
-# Windows PowerShell 5.1 profile -- herdr spawns powershell.exe for its panes,
-# which never reads the pwsh 7 profile above.
-New-RepoSymlink "$HOME\Documents\WindowsPowerShell\Microsoft.PowerShell_profile.ps1" `
-                "$RepoRoot\shell\WindowsPowerShell_profile.ps1"
-
 # Pi -- settings, extensions, and skills are canonical in this repo.
 # AGENTS.md is shared with Claude (same canonical file).
 New-RepoSymlink "$HOME\.pi\agent\AGENTS.md"    "$RepoRoot\ai\AGENTS.md"
 New-RepoSymlink "$HOME\.pi\agent\settings.json" "$RepoRoot\pi\settings.json"
 New-RepoSymlink "$HOME\.pi\agent\extensions"    "$RepoRoot\pi\extensions"
 New-RepoSymlink "$HOME\.pi\agent\skills"        "$RepoRoot\pi\skills"
-
-# A running Herdr server holds config.toml in memory; nudge it to re-read the
-# file we just linked so keybindings apply without a restart. Best-effort.
-if (Get-Command herdr -ErrorAction SilentlyContinue) {
-    herdr server reload-config 2>$null | Out-Null
-}
 
 Write-Host "done." -ForegroundColor Cyan
 Invoke-PauseIfStandalone

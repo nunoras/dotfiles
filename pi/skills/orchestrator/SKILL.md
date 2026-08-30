@@ -1,9 +1,19 @@
 ---
 name: orchestrator
-description: Top-level session orchestration rules — subagent routing, context hygiene, and implementation discipline. Not intended for subagents.
+description: >-
+  Top-level session orchestration rules — subagent routing, context hygiene,
+  and implementation discipline. Not intended for subagents. Scope: in-session
+  work only (scouts, researchers, workers inside this process). For
+  cross-agent coordination in Orca worktrees — tasks, dispatches, decision
+  gates, worker terminals — use the Orca `orchestration` skill instead.
 ---
 
 # Session Orchestration
+
+> Routing rule of thumb: if the work fits inside this session without polluting
+> context (scout, quick research, small isolated edit), keep it here. If it needs
+> its own git worktree, model routing from the roster, or a human spend gate,
+> dispatch it through Orca orchestration (`orca orchestration ...`) instead.
 
 ## Understand Before You Build
 

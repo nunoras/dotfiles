@@ -37,6 +37,14 @@ param(
 )
 
 $ErrorActionPreference = 'Stop'
+# codex prints its version banner to stderr, and this script calls it with 2>&1.
+# Under EAP=Stop that kills the call at the banner - on Windows PowerShell 5.1
+# every redirected native stderr line is a terminating RemoteException, and
+# pwsh 7.5+ does the same via $PSNativeCommandUseErrorActionPreference. Drop
+# to Continue for the duration of the call: real failures still surface through
+# $LASTEXITCODE and the missing-answer-file check below.
+$script:EapDuringCodex = $ErrorActionPreference
+$ErrorActionPreference = 'Continue'
 
 # --- the build verdict is a precondition, not an option ---------------------
 # Checked by hand rather than with [Parameter(Mandatory)], because a mandatory
@@ -200,5 +208,6 @@ try {
     Write-Output $review
 }
 finally {
+    $ErrorActionPreference = $script:EapDuringCodex
     Remove-Item $promptFile, $answerFile -ErrorAction SilentlyContinue
 }

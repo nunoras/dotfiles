@@ -31,7 +31,7 @@ $ErrorActionPreference = 'Stop'
 # A shell opened before the key was set will not have it in its process
 # environment, which is why glm-env.ps1 falls back to user scope.
 #
-# The environment lives in glm-env.ps1 so that this script and the herdr pane
+# The environment lives in glm-env.ps1 so that this script and any terminal
 # flow cannot drift apart on what a GLM session actually is.
 . (Join-Path $PSScriptRoot 'glm-env.ps1') -ContextTokens $ContextTokens
 $key = $env:ANTHROPIC_AUTH_TOKEN

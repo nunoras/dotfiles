@@ -96,21 +96,6 @@ try {
     Write-Host "  fail  pi - $($_.Exception.Message)" -ForegroundColor Yellow
 }
 
-# Herdr (terminal workspace manager for AI agents) -- official installer, drops a
-# standalone build in ~\.herdr and shims it at ~\AppData\Local\Programs\Herdr\bin.
-# install.ps1 links herdr/config.toml afterwards, which pins the preview channel,
-# so a later `herdr update` follows the same channel as the other machines.
-Write-Host "bootstrap: installing Herdr" -ForegroundColor Cyan
-if (Get-Command herdr -ErrorAction SilentlyContinue) {
-    Write-Host "  ok    herdr already installed" -ForegroundColor DarkGreen
-} else {
-    try {
-        Invoke-RestMethod 'https://herdr.dev/install.ps1' | Invoke-Expression
-        Write-Host "  add   herdr" -ForegroundColor Green
-    } catch {
-        Write-Host "  fail  herdr - $($_.Exception.Message)" -ForegroundColor Yellow
-    }
-}
 
 # --- Link configs + apply look ----------------------------------------------
 # install.ps1 enables Developer Mode (one UAC prompt) if needed, then symlinks

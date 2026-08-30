@@ -1,7 +1,3 @@
-# Plain assertions for roster.ps1 - no Pester dependency, runs on 5.1 or pwsh.
-#   pwsh -File ai/scripts/roster.tests.ps1
-# Exits non-zero on first failure.
-
 $ErrorActionPreference = 'Stop'
 . (Join-Path $PSScriptRoot 'roster.ps1')
 
@@ -31,7 +27,9 @@ Write-Host "Get-Harness"
 Assert-Eq (Get-Harness -Provider 'anthropic')   'claude' 'anthropic -> claude'
 Assert-Eq (Get-Harness -Provider 'zai')         'pi'     'zai -> pi'
 Assert-Eq (Get-Harness -Provider 'openrouter')  'pi'     'openrouter -> pi'
-Assert-Eq (Get-Harness -Provider 'openai-codex') 'pi'    'openai-codex -> pi'
+Assert-Eq (Get-Harness -Provider 'openai-codex') 'pi'    'openai-codex is not codex, -> pi'
+Assert-Eq (Get-Harness -Provider 'codex')       'codex'  'codex -> codex'
+Assert-Eq (Get-Harness -Provider 'agy')         'agy'    'agy -> agy'
 
 Write-Host "Split-ModelRef"
 $a = Split-ModelRef 'zai:glm-5.3'
@@ -40,7 +38,6 @@ Assert-Eq $a.Model    'glm-5.3' 'simple model'
 $b = Split-ModelRef 'openrouter:z-ai/glm-5.3'
 Assert-Eq $b.Provider 'openrouter'   'slashed model provider'
 Assert-Eq $b.Model    'z-ai/glm-5.3' 'slashed model id (first colon only)'
-# OpenRouter free ids carry their own colon, so the split must not be greedy.
 $c = Split-ModelRef 'openrouter:z-ai/glm-5.2:free'
 Assert-Eq $c.Provider 'openrouter'          'free-tier ref provider'
 Assert-Eq $c.Model    'z-ai/glm-5.2:free'   'free-tier ref keeps its own colon'
@@ -49,32 +46,42 @@ Assert-Throws { Split-ModelRef 'zai:' }     'empty id throws'
 
 Write-Host "Get-RosterEntry"
 $p = Get-RosterEntry -Role 'planner'
-Assert-Eq $p.Primary  'anthropic:claude-fable-5' 'planner primary'
+Assert-Eq $p.Model    'anthropic:claude-fable-5' 'planner model'
 Assert-Eq $p.Fallback 'anthropic:claude-opus-5'  'planner fallback'
-$ba = Get-RosterEntry -Role 'builder-a'
-Assert-Eq $ba.Primary 'zai:glm-5.3'              'builder-a primary'
+$b = Get-RosterEntry -Role 'builder'
+Assert-Eq $b.Model 'zai:glm-5.3'              'builder model'
+Assert-Eq $b.Fallback 'zai:glm-5.3-flash,openrouter:z-ai/glm-5.2:free' 'builder fallback, sonnet dropped (orca-dispatch #16)'
 Assert-Throws { Get-RosterEntry -Role 'nope' }   'unknown role throws'
 
 Write-Host "Get-RoleHarness"
 Assert-Eq (Get-RoleHarness -Role 'planner')   'claude' 'planner -> claude'
-Assert-Eq (Get-RoleHarness -Role 'builder-a') 'pi'     'builder-a -> pi'
+Assert-Eq (Get-RoleHarness -Role 'builder') 'pi'     'builder -> pi'
 Assert-Eq (Get-RoleHarness -Role 'reviewer')  'pi'     'reviewer -> pi'
 
 Write-Host "Get-RosterFrontmatter"
-$fmA = Get-RosterFrontmatter -Role 'builder-a'
-Assert-True ($fmA -match '(?m)^role: builder-a$')                            'stamps the role slot verbatim'
-Assert-True ($fmA -match '(?m)^model: zai:glm-5\.3$')                        'stamps the roster primary as provider:id'
-Assert-True ($fmA -match '(?m)^fallbackModels: openrouter:z-ai/glm-5\.2:free$') 'stamps the roster fallback'
+$fmA = Get-RosterFrontmatter -Role 'builder'
+Assert-True ($fmA -match '(?m)^role: builder$')                            'stamps the role verbatim'
+Assert-True ($fmA -match '(?m)^model: zai:glm-5\.3$')                        'stamps the roster model as provider:id'
+Assert-True ($fmA -match '(?m)^fallbackModels: zai:glm-5\.3-flash,openrouter:z-ai/glm-5\.2:free$') 'stamps the whole fallback chain'
 Assert-True ($fmA -match '(?m)^base: main$')                                 'base defaults to main'
-$fmB = Get-RosterFrontmatter -Role 'builder-b' -Base 'develop'
+$fmB = Get-RosterFrontmatter -Role 'builder' -Base 'develop'
 Assert-True ($fmB -match '(?m)^base: develop$')                              'base is overridable'
-Assert-True ($fmB -match '(?m)^model: openrouter:stealth/ox-alpha$')         'builder-b primary'
-# The reviewer has no fallback on purpose, so the key must be absent rather
-# than present and empty - dispatch treats an empty value as "no fallback"
-# either way, but a bare key reads like an oversight.
+Assert-True ($fmB -match '(?m)^model: zai:glm-5\.3$')                        'builder model'
 $fmR = Get-RosterFrontmatter -Role 'reviewer'
 Assert-True ($fmR -notmatch 'fallbackModels')                                'no fallback key when the roster has none'
 Assert-Throws { Get-RosterFrontmatter -Role 'nope' }                         'unknown role throws'
+
+$tmp = Join-Path ([IO.Path]::GetTempPath()) "roster-chain-$PID.json"
+'{ "policy": { "spendGate": "human", "autoFallback": false, "noSelfReview": true, "maxDispatchDepth": 2 }, "roles": { "b": { "model": "zai:glm-5.3", "fallback": "openrouter:z-ai/glm-5.2:free,broken-no-colon" } } }' | Set-Content -LiteralPath $tmp -Encoding UTF8
+Assert-Throws { Get-RosterFrontmatter -Role 'b' -Path $tmp }                 'a malformed level in the fallback chain throws'
+'{ "policy": { "spendGate": "human", "autoFallback": false, "noSelfReview": true, "maxDispatchDepth": 2 }, "roles": { "b": { "model": "zai:glm-5.3", "fallback": "openrouter:z-ai/glm-5.2:free, zai:glm-5.3" } } }' | Set-Content -LiteralPath $tmp -Encoding UTF8
+Assert-True ((Get-RosterFrontmatter -Role 'b' -Path $tmp) -match 'fallbackModels') 'a well-formed chain with spaces passes'
+Remove-Item -LiteralPath $tmp -ErrorAction SilentlyContinue
+
+$flat = Join-Path ([IO.Path]::GetTempPath()) "roster-flat-$PID.json"
+'{ "planner": { "primary": "anthropic:claude-fable-5", "fallback": "anthropic:claude-opus-5" } }' | Set-Content -LiteralPath $flat -Encoding UTF8
+Assert-Throws { Get-RosterEntry -Role 'planner' -Path $flat }                 'a flat roster without a roles object throws'
+Remove-Item -LiteralPath $flat -ErrorAction SilentlyContinue
 
 Write-Host ""
 if ($failures -gt 0) { Write-Host "$failures failure(s)" -ForegroundColor Red; exit 1 }

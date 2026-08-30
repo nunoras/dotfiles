@@ -5,11 +5,11 @@
 #   . "$HOME\.claude\scripts\glm-env.ps1"
 #   claude          # now talks to GLM
 #
-# `glm.ps1` dot-sources this too, so the headless path and the herdr pane path
+# `glm.ps1` dot-sources this too, so the headless path and any terminal path
 # share one definition of "what makes a session a GLM session".
 #
 # The key is read here rather than passed in, so it never appears in a command
-# line, a herdr --env argument, or a process listing.
+# line, a launcher --env argument, or a process listing.
 
 param(
     [int]$ContextTokens = 1000000
