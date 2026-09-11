@@ -49,8 +49,8 @@ $p = Get-RosterEntry -Role 'planner'
 Assert-Eq $p.Model    'anthropic:claude-fable-5' 'planner model'
 Assert-Eq $p.Fallback 'anthropic:claude-opus-5'  'planner fallback'
 $b = Get-RosterEntry -Role 'builder'
-Assert-Eq $b.Model 'zai:glm-5.3'              'builder model'
-Assert-Eq $b.Fallback 'zai:glm-5.3-flash,openrouter:z-ai/glm-5.2:free' 'builder fallback, sonnet dropped (orca-dispatch #16)'
+Assert-Eq $b.Model 'zai:glm-5.3-flash:high'   'builder model'
+Assert-Eq $b.Fallback 'xai:grok-4.6:high' 'builder fallback'
 Assert-Throws { Get-RosterEntry -Role 'nope' }   'unknown role throws'
 
 Write-Host "Get-RoleHarness"
@@ -61,14 +61,12 @@ Assert-Eq (Get-RoleHarness -Role 'reviewer')  'pi'     'reviewer -> pi'
 Write-Host "Get-RosterFrontmatter"
 $fmA = Get-RosterFrontmatter -Role 'builder'
 Assert-True ($fmA -match '(?m)^role: builder$')                            'stamps the role verbatim'
-Assert-True ($fmA -match '(?m)^model: zai:glm-5\.3$')                        'stamps the roster model as provider:id'
-Assert-True ($fmA -match '(?m)^fallbackModels: zai:glm-5\.3-flash,openrouter:z-ai/glm-5\.2:free$') 'stamps the whole fallback chain'
+Assert-True ($fmA -match '(?m)^model: zai:glm-5\.3-flash:high$')             'stamps the roster model as provider:id'
+Assert-True ($fmA -match '(?m)^fallbackModels: xai:grok-4\.6:high$')          'stamps the whole fallback chain'
 Assert-True ($fmA -match '(?m)^base: main$')                                 'base defaults to main'
 $fmB = Get-RosterFrontmatter -Role 'builder' -Base 'develop'
 Assert-True ($fmB -match '(?m)^base: develop$')                              'base is overridable'
-Assert-True ($fmB -match '(?m)^model: zai:glm-5\.3$')                        'builder model'
-$fmR = Get-RosterFrontmatter -Role 'reviewer'
-Assert-True ($fmR -notmatch 'fallbackModels')                                'no fallback key when the roster has none'
+Assert-True ($fmB -match '(?m)^model: zai:glm-5\.3-flash:high$')             'builder model'
 Assert-Throws { Get-RosterFrontmatter -Role 'nope' }                         'unknown role throws'
 
 $tmp = Join-Path ([IO.Path]::GetTempPath()) "roster-chain-$PID.json"
@@ -76,6 +74,8 @@ $tmp = Join-Path ([IO.Path]::GetTempPath()) "roster-chain-$PID.json"
 Assert-Throws { Get-RosterFrontmatter -Role 'b' -Path $tmp }                 'a malformed level in the fallback chain throws'
 '{ "policy": { "spendGate": "human", "autoFallback": false, "noSelfReview": true, "maxDispatchDepth": 2 }, "roles": { "b": { "model": "zai:glm-5.3", "fallback": "openrouter:z-ai/glm-5.2:free, zai:glm-5.3" } } }' | Set-Content -LiteralPath $tmp -Encoding UTF8
 Assert-True ((Get-RosterFrontmatter -Role 'b' -Path $tmp) -match 'fallbackModels') 'a well-formed chain with spaces passes'
+'{ "policy": { "spendGate": "human", "autoFallback": false, "noSelfReview": true, "maxDispatchDepth": 2 }, "roles": { "b": { "model": "zai:glm-5.3" } } }' | Set-Content -LiteralPath $tmp -Encoding UTF8
+Assert-True ((Get-RosterFrontmatter -Role 'b' -Path $tmp) -notmatch 'fallbackModels') 'no fallback key when the roster has none'
 Remove-Item -LiteralPath $tmp -ErrorAction SilentlyContinue
 
 $flat = Join-Path ([IO.Path]::GetTempPath()) "roster-flat-$PID.json"

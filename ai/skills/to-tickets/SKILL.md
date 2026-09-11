@@ -22,17 +22,20 @@ GitHub Issues in this repo, per `docs/agents/issue-tracker.md`. Use the `gh` CLI
 
 ## Dispatcher info in the issue body
 
-orca-dispatch reads a ticket's dispatcher info from a fenced block at the top of the issue body:
+Each ticket carries its dispatcher info in a fenced block at the top of the issue body:
 
 ```markdown
-<!-- dispatch frontmatter (orca-dispatch reads this) -->
+<!-- dispatch frontmatter -->
 ```
 role: builder
-model: zai:glm-5.3
-fallbackModels: openrouter:z-ai/glm-5.2:free
+model: zai:glm-5.3-flash:high
+fallbackModels: xai:grok-4.6:high
 base: main
 ```
 ```
+
+The dispatch server does not read this block; it picks models from its own workflow roles.
+The block records the roster at ticket time, so keep the roster in step with the server.
 
 Omit the `fallbackModels` line entirely for a role that has none.
 Do not include tracker fields (`id`, `status`, `blocked_by`) - the issue number, open/closed state, and native dependencies are those now.
