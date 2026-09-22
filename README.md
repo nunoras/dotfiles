@@ -5,32 +5,31 @@ of truth, symlinked into the locations each tool actually reads.
 
 ## Philosophy
 
-- **Windows is home.** Every machine runs native Windows tools (no WSL straddle).
-  One home directory (`C:\Users\<me>`), one of every config.
+- **Windows is home, Linux is supported.** Windows machines run native Windows
+  tools (no WSL straddle). Linux boxes get the agent configs through `install.sh`.
 - **One source of truth.** [`ai/AGENTS.md`](ai/AGENTS.md) is the canonical system
-  prompt. Claude Code, Pi, and Zed are all *pointed at it* rather than each holding
+  prompt. Claude Code and Pi are both *pointed at it* rather than each holding
   their own copy.
-- **Symlinks, not copies.** `install.ps1` links the repo files into each tool's
-  expected location, so editing the repo updates every tool live.
+- **Symlinks, not copies.** `install.ps1` (Windows) and `install.sh` (Linux) link
+  the repo files into each tool's expected location, so editing the repo updates
+  every tool live.
 
 ## Layout
 
 ```
 dotfiles/
-├── install.ps1                    # symlinks repo -> tool locations (idempotent)
-├── COLLECT-FROM-THIS-MACHINE.md   # runbook: pull a machine's configs INTO this repo
+├── install.ps1                    # Windows: symlinks repo -> tool locations (idempotent)
+├── install.sh                     # Linux: the same links, minus the Windows-only parts
 ├── ai/
 │   ├── AGENTS.md                  # ⭐ single source of truth (system prompt)
-│   ├── skills/                    # Claude Code skills (SKILL.md each)
+│   ├── skills/                    # shared skills, every harness sees them
+│   ├── scripts/skills-sync.mjs    # links skills into ~/.agents/skills
 │   └── agents/                    # shared subagent definitions
 ├── claude/
 │   ├── settings.json              # Claude Code settings (non-secret)
-│   ├── statusline-rich.ps1        # the two-line status line
+│   ├── statusline.mjs             # the two-line status line
 │   └── hooks/                     # hooks referenced by settings.json
-├── zed/
-│   ├── settings.json
-│   └── keymap.json
-├── pi/                            # Pi global config (path TBC)
+├── pi/                            # Pi global config and pi-only skills
 └── shell/
     └── Microsoft.PowerShell_profile.ps1   # the "oh-my-zsh" experience, natively
 ```
@@ -40,27 +39,30 @@ dotfiles/
 | Repo file | Symlinked to | Read by |
 |---|---|---|
 | `ai/AGENTS.md` | `~/.claude/CLAUDE.md` | Claude Code |
-| `ai/system-prompt-append.md` | `~/.claude/system-prompt-append.md` | Claude Code (via the `claude` shim) |
 | `ai/scripts/` | `~/.claude/scripts/` | PowerShell profiles, agent scripts |
 | `ai/skills/` | `~/.claude/skills/` | Claude Code |
 | `ai/agents/` | `~/.claude/agents/` | Claude Code |
 | `claude/settings.json` | `~/.claude/settings.json` | Claude Code |
-| `claude/statusline-rich.ps1` | `~/.claude/statusline-rich.ps1` | Claude Code |
-| `zed/settings.json` | `%APPDATA%\Zed\settings.json` | Zed |
-| `zed/keymap.json` | `%APPDATA%\Zed\keymap.json` | Zed |
-| `shell/Microsoft.PowerShell_profile.ps1` | `~\Documents\PowerShell\…_profile.ps1` | PowerShell 7 |
+| `claude/statusline.mjs` | `~/.claude/statusline.mjs` | Claude Code |
+| `shell/Microsoft.PowerShell_profile.ps1` | `~\Documents\PowerShell\…_profile.ps1` | PowerShell 7 (Windows only) |
 | `pi/skills/` | `~/.pi/agent/skills/` | Pi |
 | `pi/extensions/` | `~/.pi/agent/extensions/` | Pi |
 | `ai/AGENTS.md` | `~/.pi/agent/AGENTS.md` | Pi |
+| `ai/skills/*` + Claude plugin skills | `~/.agents/skills/*` (one link per skill) | Pi, Codex |
 
-### The two skill sets are separate on purpose
+### Every harness gets every skill
 
-Claude Code reads `ai/skills`, pi reads `pi/skills`, and neither reads the other.
-They are not two copies of one set: `orchestrator` exists in both with deliberately different content, because the two harnesses need different instructions.
+Shared skills live in `ai/skills`.
+Claude Code reads them through `~/.claude/skills` and gets pstack and mattpocock-skills as plugins.
+[`ai/scripts/skills-sync.mjs`](ai/scripts/skills-sync.mjs) links the shared skills and every enabled Claude plugin's skills into `~/.agents/skills`, which both pi and Codex scan.
 
-Three skills are mirrored across both because both harnesses need them and they are harness-agnostic prose: `grilling`, `grill-with-docs`, `domain-modeling`.
-Edit one, edit the other - `pwsh -File ai/scripts/skills-mirror.tests.ps1` fails if you forget.
-Dropping the copy from one side breaks whichever harness is documented to use it - AGENTS.md puts `grilling` at step 1 of the pipeline, and the planner runs on Claude Code.
+- It runs from both installers and from a Claude `SessionStart` hook, so plugin updates and new skills show up on the next Claude session.
+- It only touches links it made, tracked in `~/.agents/skills/.dotfiles-skills-sync.json`. Skills other tools install there (like `npx skills add`) are left alone.
+- When two skills share a name, the first one wins: personal skills, then plugins in `enabledPlugins` order. That is why `pstack` comes before `mattpocock-skills` in `claude/settings.json`.
+- Plugin skills get the plugin as a folder prefix, for example `pstack-poteto-mode`.
+
+`pi/skills` holds the few skills that only work inside pi (they read pi's sessions or use pi's browser tools), linked to `~/.pi/agent/skills`.
+`ai/skills/synced/` is where Claude Code drops skills synced from claude.ai, and it is gitignored.
 
 ## Setup on a new machine
 
@@ -85,48 +87,36 @@ Re-runnable and tolerant of already-installed items. Use
 `.\bootstrap.ps1 -SkipInstall` to install software only, or run `.\install.ps1`
 on its own to (re)link configs without touching apps.
 
-> **Order matters:** if a machine already has configs you care about, run the
-> COLLECT runbook *before* linking — open Claude Code in the repo and say
-> "follow COLLECT-FROM-THIS-MACHINE.md" — otherwise install backs them up and
-> replaces them with the repo's versions.
+> Existing configs are moved aside as `<name>.bak-<timestamp>` before linking,
+> so nothing on the machine is lost.
 
 > **Claude Code** (npm) and **Pi** (`pi.dev/install.ps1`) are both installed by
 > bootstrap. Pi reads its global instructions from `~/.pi/agent/AGENTS.md`, which
 > `install.ps1` symlinks to the canonical `ai/AGENTS.md` — same file as Claude.
 
-## The system-prompt append
+### Linux
 
-[`ai/system-prompt-append.md`](ai/system-prompt-append.md) is appended to the
-system prompt of **every** Claude Code session. It is vendored verbatim from
-[disler/fixing-smartass-opus-5](https://github.com/disler/fixing-smartass-opus-5);
-re-fetch the raw file to update it.
+```bash
+git clone https://github.com/nunoras/dotfiles ~/dotfiles
+cd ~/dotfiles
+./install.sh --dry-run   # preview
+./install.sh
+```
 
-Claude Code has no settings key and no env var for this - checked on 2.x, an
-`appendSystemPrompt` key in `--settings` is silently ignored. The only mechanism
-is the `--append-system-prompt-file` flag, so the flag has to be on every launch.
-[`ai/scripts/claude-wrapper.ps1`](ai/scripts/claude-wrapper.ps1) defines a
-PowerShell function named `claude` that injects it, and the pwsh 7 profile
-dot-sources that file.
+`install.sh` links the Claude Code and pi configs, removes links into the repo whose target is gone, and runs the skill sync.
+It does not install software. It warns about missing `git`, `node`, `claude`, `pi` or `codex`, and `node` is required for the status line, hooks and skill sync.
+Existing files are moved aside as `<name>.bak-<timestamp>` before linking, same as on Windows.
 
-This is different from `ai/AGENTS.md`. AGENTS.md is *context* Claude reads and is
-shared with Pi and Zed; the append goes into the actual system prompt and is
-Claude Code only.
+## Voice and formatting
 
-Three ways out:
-
-| want | do |
-|---|---|
-| one session without it | `$env:M2_NO_PROMPT_APPEND = 1` |
-| one command without it | `claude.cmd ...` (bypasses the function) |
-| your own prompt instead | pass any `--system-prompt*` flag; the shim steps aside |
-
-Subagents do not inherit it. The hidden `--append-subagent-system-prompt` flag
-covers them if that is ever wanted.
+How agents talk to me lives in the Voice section of [`ai/AGENTS.md`](ai/AGENTS.md): plain terms, few words, no mannered prose, and when to use lists, tables and headers.
+Claude Code injects CLAUDE.md into the user turn, which is where Anthropic's Fable 5.1 guide says the mannered-prose instruction works best.
+Longer prose (docs, READMEs, PR descriptions) follows the `unslop` skill.
 
 ## The Claude status line
 
 
-The Claude Code status line is [`claude/statusline-rich.ps1`](claude/statusline-rich.ps1):
+The Claude Code status line is [`claude/statusline.mjs`](claude/statusline.mjs):
 
 ```
 Opus 5 (1M context)  ████|██░░░░░░░░░░░░░░░░  31%  xhigh          main  (+21,-7)
@@ -137,9 +127,11 @@ The `|` on the context bar sits at 20%, the "time to start a new chat" tick. The
 fill is green below it and amber above, and the tick turns red once the fill
 passes it.
 
-Hook and status-line commands in `claude/settings.json` are written as
-`$HOME/...`, not `C:\Users\<me>\...`, because Claude Code runs them through Git
-Bash. One settings file therefore works on machines with different usernames.
+Hook and status-line commands in `claude/settings.json` are `node "$HOME/..."`.
+Claude Code runs them through Git Bash on Windows and `sh` on Linux, and Node is
+already there for Claude Code and pi, so one settings file works on both
+platforms and on machines with different usernames. Right-alignment reads
+`COLUMNS`, which Claude Code sets for the status line command.
 
 ## The native-Windows terminal stack (replaces WSL + oh-my-zsh)
 

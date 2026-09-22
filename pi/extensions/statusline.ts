@@ -1,6 +1,6 @@
 /**
  * Rich status line - replaces pi's footer with the two-line Claude Code status
- * line from ~/.claude/statusline-rich.ps1.
+ * line from ~/.claude/statusline.mjs.
  *
  * Line 1:  [vendor]  model(gradient)  [ctx bar, 22 wide, 20% marker]  pct%  effort   …right…  branch  (+ins,-del)
  * Line 2:  5-hour: x% (r: ym) | weekly: x% (r: xd zh ym)

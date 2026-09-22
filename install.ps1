@@ -81,6 +81,38 @@ function New-RepoSymlink {
     Write-Host "  link   $LinkPath -> $TargetPath" -ForegroundColor Green
 }
 
+function Remove-DanglingRepoLinks {
+    param([Parameter(Mandatory)] [string[]]$Directories)
+
+    $repoPrefix = (Resolve-Path $RepoRoot).Path.TrimEnd('\') + '\'
+    foreach ($dir in $Directories) {
+        if (-not (Test-Path -LiteralPath $dir)) { continue }
+        foreach ($item in Get-ChildItem -LiteralPath $dir -Force -ErrorAction SilentlyContinue) {
+            if (-not $item.LinkType) { continue }
+            $target = @($item.Target)[0]
+            if (-not $target -or -not $target.StartsWith($repoPrefix, [StringComparison]::OrdinalIgnoreCase)) { continue }
+            if (Test-Path -LiteralPath $target) { continue }
+            if ($WhatIfLinks) {
+                Write-Host "  WOULD  remove dangling $($item.FullName)" -ForegroundColor Yellow
+                continue
+            }
+            if ($item.PSIsContainer) { [System.IO.Directory]::Delete($item.FullName, $false) } else { $item.Delete() }
+            Write-Host "  remove dangling $($item.FullName) -> $target" -ForegroundColor Yellow
+        }
+    }
+}
+
+function Sync-SharedSkills {
+    if (-not (Get-Command node -ErrorAction SilentlyContinue)) {
+        Write-Host "  skip   shared skills (node not found)" -ForegroundColor Yellow
+        return
+    }
+    Write-Host "dotfiles: linking skills into ~/.agents/skills for pi and Codex" -ForegroundColor Cyan
+    $syncArgs = @("$RepoRoot\ai\scripts\skills-sync.mjs")
+    if ($WhatIfLinks) { $syncArgs += '--dry-run' }
+    & node @syncArgs | Select-Object -Last 1 | ForEach-Object { Write-Host "  $_" -ForegroundColor Green }
+}
+
 # --- Windows Terminal appearance --------------------------------------------
 # Merge repo appearance into profiles.defaults WITHOUT touching the machine's
 # own profile list (so per-machine profiles like conda/VS survive). We can't
@@ -268,30 +300,13 @@ Write-Host "dotfiles: linking configs from $RepoRoot" -ForegroundColor Cyan
 
 # Claude Code -- point its CLAUDE.md at the canonical AGENTS.md
 New-RepoSymlink "$HOME\.claude\CLAUDE.md"     "$RepoRoot\ai\AGENTS.md"
-
-# Appended to every Claude Code session's system prompt by the `claude` shim
-# in shell/*_profile.ps1 -- Claude Code has no settings key for this, only a flag.
-New-RepoSymlink "$HOME\.claude\system-prompt-append.md" "$RepoRoot\ai\system-prompt-append.md"
 New-RepoSymlink "$HOME\.claude\skills"        "$RepoRoot\ai\skills"
 New-RepoSymlink "$HOME\.claude\agents"        "$RepoRoot\ai\agents"
 New-RepoSymlink "$HOME\.claude\scripts"       "$RepoRoot\ai\scripts"
-
-# Model roster for pane orchestration -- read by the dispatch scripts and the
-# to-tickets skill. A well-known path so non-PowerShell consumers find it too.
-New-RepoSymlink "$HOME\.claude\roster.json"   "$RepoRoot\ai\roster.json"
-New-RepoSymlink "$HOME\.pi\agent\roster.json" "$RepoRoot\ai\roster.json"
 New-RepoSymlink "$HOME\.claude\settings.json" "$RepoRoot\claude\settings.json"
 
 # Claude Code status line (settings.json points at this path)
-New-RepoSymlink "$HOME\.claude\statusline-rich.ps1" "$RepoRoot\claude\statusline-rich.ps1"
-
-# Claude Code hooks -- linked file by file, so hooks that other tools drop into
-# ~/.claude/hooks (plugin self-healers, etc.) are left alone.
-New-RepoSymlink "$HOME\.claude\hooks\unslop-always.ps1"     "$RepoRoot\claude\hooks\unslop-always.ps1"
-
-# Zed (Windows-native GUI app)
-New-RepoSymlink "$env:APPDATA\Zed\settings.json" "$RepoRoot\zed\settings.json"
-New-RepoSymlink "$env:APPDATA\Zed\keymap.json"   "$RepoRoot\zed\keymap.json"
+New-RepoSymlink "$HOME\.claude\statusline.mjs" "$RepoRoot\claude\statusline.mjs"
 
 # PowerShell 7 profile + bundled oh-my-posh theme (kept side by side so the
 # profile finds the theme via $PSScriptRoot)
@@ -306,6 +321,16 @@ New-RepoSymlink "$HOME\.pi\agent\AGENTS.md"    "$RepoRoot\ai\AGENTS.md"
 New-RepoSymlink "$HOME\.pi\agent\settings.json" "$RepoRoot\pi\settings.json"
 New-RepoSymlink "$HOME\.pi\agent\extensions"    "$RepoRoot\pi\extensions"
 New-RepoSymlink "$HOME\.pi\agent\skills"        "$RepoRoot\pi\skills"
+
+Remove-DanglingRepoLinks @(
+    "$HOME\.claude",
+    "$HOME\.claude\hooks",
+    "$HOME\.pi\agent",
+    "$HOME\Documents\PowerShell",
+    "$env:APPDATA\Zed"
+)
+
+Sync-SharedSkills
 
 Write-Host "done." -ForegroundColor Cyan
 Invoke-PauseIfStandalone

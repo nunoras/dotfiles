@@ -49,13 +49,6 @@ if (Get-Module -ListAvailable -Name Terminal-Icons) {
     Import-Module Terminal-Icons
 }
 
-# --- claude system-prompt append --------------------------------------------
-# Wraps `claude` so every session gets ai/system-prompt-append.md.
-# Not $PSScriptRoot: this profile is a symlink, so that resolves to the link's
-# directory rather than the dotfiles repo.
-$__claudeWrapper = Join-Path $HOME '.claude\scripts\claude-wrapper.ps1'
-if (Test-Path $__claudeWrapper) { . $__claudeWrapper }
-
 # --- aliases & functions ----------------------------------------------------
 # Set-Alias ll Get-ChildItem
 # Set-Alias g  git

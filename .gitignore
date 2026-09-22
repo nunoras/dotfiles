@@ -10,14 +10,9 @@ secrets/
 *.bak-*
 *.bak
 
-# Scratch files a session dropped in the repo root
-.brain_brief_*.txt
-
-# Skills symlinked in from a machine-local install (~/.agents/skills). Committing
-# the link would hand other machines a dead path - copy the real files in if one
-# is worth sharing.
-ai/skills/baoyu-youtube-transcript
-
 # OS / editor noise
 .DS_Store
 Thumbs.db
+
+# Skills Claude Code syncs down from claude.ai into ~/.claude/skills, which links here
+ai/skills/synced/
