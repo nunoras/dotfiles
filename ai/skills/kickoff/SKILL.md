@@ -23,9 +23,9 @@ Not this skill: summarising a finished task, writing a commit message, or saving
 1. **Scope it.** No argument means the whole session's active thread. An argument narrows it ("just the extrato gate work") - carry only that thread and say so in the prompt.
 2. **Check state for real, do not recall it.** After a long session your memory of the working tree is stale. Run `git status --short`, `git log --oneline -5`, and the current branch. If something was running or half-applied, verify it rather than asserting it.
 3. **Separate durable from disposable.** Anything true beyond this task belongs in memory or in the repo docs, not in a handoff prompt. Say so in one line if you write one, then leave it out of the prompt.
-4. **Draft against the template below**, then cut. A handoff longer than the work it describes is a failed handoff. Aim under 60 lines.
+4. **Draft against the template below**, then cut. A handoff longer than the work it describes is a failed handoff.
 5. **Pick the model for the receiving session.** See the rubric below. This session knows what the next chunk of work actually is, so it is the one that should make the call.
-6. **Save and print.** Write to `~/.claude/handoffs/<YYYY-MM-DD>-<slug>.md` (use the real date from `date +%F`, slug from the goal). Then print the whole thing in the chat as a single fenced code block so it copies clean.
+6. **Save and print.** Write to `~/.claude/handoffs/<YYYY-MM-DD>-<slug>.md` (today's real date, slug from the goal). Then print the whole thing in the chat as a single fenced code block so it copies clean.
 
 ## What goes in
 

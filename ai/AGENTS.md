@@ -10,8 +10,8 @@ If the work is small but the design is unclear, use `grilling` instead of a spec
 wayfinder, to-spec and to-tickets run only when I invoke them.
 If one would help, tell me which one and why.
 
-`depot` and `boxr` are my own agent tools, early and changing often.
-Use them only when I ask, and check `--help` or the repo's README before running a command.
+`agni` (which absorbed `depot` and `boxr`) is my own agent tool, early and changing often.
+Use it only when I ask, and check `--help` or the repo's README before running a command.
 
 ## Environment
 
@@ -79,9 +79,8 @@ Fix the underlying type or lint issue whenever possible.
 ## Voice
 
 Explain things in plain terms, in as few words as the idea needs.
-Keep the tone relaxed, with short sentences, no corporate fluff, and no over-explaining.
+Keep the tone relaxed, with short sentences and no corporate fluff.
 Casual is fine; sloppy is not.
-When in doubt, say less.
 
 Lead with the answer, then the detail that supports it.
 Match the length to the question: "Is X still used?" gets "No. The only match is the file itself."

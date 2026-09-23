@@ -15,7 +15,7 @@ Fetches a YouTube video's title and full transcript by pulling captions via `yt-
 ## Usage
 
 ```bash
-python3 SKILL_DIR/fetch_transcript.py "<youtube_url>"
+python SKILL_DIR/fetch_transcript.py "<youtube_url>"
 ```
 
 `SKILL_DIR` is the directory this SKILL.md is in.
@@ -37,4 +37,4 @@ Progress/info logs go to stderr. On failure (no English captions, network error,
 
 - Only English captions are attempted (`en`, `en-US`, `en-GB`, then any `en*`). Manual captions are preferred over auto-generated.
 - Transcript is plain text with timing/formatting stripped — not timestamped.
-- For non-English videos or videos with captions disabled, the script will fail; consider `video_extract` with a Gemini prompt as a fallback.
+- For non-English videos or videos with captions disabled, the script fails; tell the user.

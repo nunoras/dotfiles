@@ -1,6 +1,6 @@
 ---
 name: pdf-reader
-description: Read and comprehend PDF files, especially math lecture notes and academic papers. Use when the user asks to read, parse, analyze, or extract content from a PDF file.
+description: Read and understand PDF files, especially math lecture notes and academic papers. Use when the user asks to read, analyze, or search a PDF's content. For creating, editing, merging or filling PDFs, use the pdf skill.
 ---
 
 # PDF Reader
@@ -9,17 +9,8 @@ Read and comprehend PDF files, especially math lecture notes and academic papers
 
 ## Setup
 
-All scripts use a venv at `SKILL_DIR/.venv` with `pymupdf` installed. If the venv is missing, create it from `requirements.txt`:
-
-```bash
-python3 -m venv SKILL_DIR/.venv
-SKILL_DIR/.venv/bin/pip install -r SKILL_DIR/requirements.txt
-```
-
-**Python command:** Always invoke scripts with:
-```
-SKILL_DIR/.venv/bin/python SKILL_DIR/scripts/<script>.py [args]
-```
+The scripts need `pymupdf` in a venv at `SKILL_DIR/.venv`. If it is missing, run `python -m venv SKILL_DIR/.venv`, then install `requirements.txt` with that venv's pip.
+The venv interpreter is `SKILL_DIR/.venv/Scripts/python.exe` on Windows and `SKILL_DIR/.venv/bin/python` elsewhere. On Windows, `python3` is a Store stub, so use `python`.
 
 ## Scripts
 
@@ -47,10 +38,7 @@ Run `pdf_info.py` on every new PDF before doing anything else. This tells you:
 ### Step 2: Pick a Strategy Based on Size and Content
 
 #### Short PDFs (≤15 pages)
-- Extract all text: `pdf_extract.py <path>`
-- Render all pages: `pdf_render.py <path>`
-- Read all rendered images with the `read` tool for full visual comprehension
-- This gives complete understanding at reasonable token cost
+- Read the PDF directly with the Read tool (up to 20 pages per call). Render a page at 200 DPI only when its equations come out unreadable.
 
 #### Medium PDFs (15–60 pages)
 - Extract all text first (cheap, gives structural overview)
@@ -91,36 +79,3 @@ When reading rendered page images:
 - **Pages with decent text but zero math**: text extraction alone is fine, skip rendering
 - **TOC entries**: use these to navigate structurally rather than reading linearly
 
-## Common Patterns
-
-### "Read this PDF" (full document)
-```
-1. pdf_info.py → assess size and content
-2. Pick strategy (short/medium/long)
-3. Extract text + selectively render
-4. Provide summary with key findings
-```
-
-### "What does theorem X say?"
-```
-1. pdf_search.py → find the page
-2. pdf_render.py → render that page (and maybe the next for proof continuation)
-3. Read the image, state the theorem precisely
-```
-
-### "Explain the proof on page N"
-```
-1. pdf_render.py --pages N → render the page
-2. Read the image for full visual comprehension
-3. Also extract text from pages N-1 and N+1 for surrounding context
-4. Walk through the proof step by step
-```
-
-### "Summarize this paper"
-```
-1. pdf_info.py → get TOC and page count
-2. pdf_extract.py → full text extraction
-3. Read abstract, intro, conclusion first (text is usually sufficient)
-4. Render figures/theorem pages as needed for deeper understanding
-5. Provide structured summary
-```
