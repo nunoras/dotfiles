@@ -2,7 +2,7 @@
 name: scout
 description: Fast codebase recon — explores files, finds patterns, maps architecture
 tools: read, grep, find, ls
-model: openai-codex/gpt-5.4-mini
+model: anthropic/claude-opus-5-5:low
 fallbackModels: openai-codex/gpt-5.5, openai-codex/gpt-5.4, anthropic/claude-haiku-4-5
 ---
 

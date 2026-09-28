@@ -81,6 +81,7 @@ Fix the underlying type or lint issue whenever possible.
 Explain things in plain terms, in as few words as the idea needs.
 Keep the tone relaxed, with short sentences and no corporate fluff.
 Casual is fine; sloppy is not.
+Status updates and decision questions stay under about 150 words unless I ask for more.
 
 Lead with the answer, then the detail that supports it.
 Match the length to the question: "Is X still used?" gets "No. The only match is the file itself."
@@ -127,3 +128,5 @@ When writing or substantially editing long Markdown files, put each full sentenc
 Preserve normal Markdown structure, but avoid wrapping multiple sentences onto one physical line.
 
 For longer prose written for people, such as docs, READMEs and PR descriptions, follow the `unslop` skill.
+
+@~/.claude/pstack-models.md

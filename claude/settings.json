@@ -5,6 +5,13 @@
     "pr": ""
   },
   "permissions": {
+    "allow": [
+      "Bash(*scratchpad/flow/*)",
+      "Bash(*agni-wt/flow/*)",
+      "Bash(git -C /n/GitHub/agni-wt/*)",
+      "Bash(gh pr merge *)",
+      "Bash(gh pr edit *)"
+    ],
     "defaultMode": "auto"
   },
   "model": "opus",
@@ -39,7 +46,7 @@
   "enabledPlugins": {
     "pstack@open-pstack": true,
     "mattpocock-skills@claude-plugins-official": true,
-    "rust-analyzer-lsp@claude-plugins-official": false
+    "stripe@claude-plugins-official": true
   },
   "extraKnownMarketplaces": {
     "open-pstack": {
@@ -56,9 +63,10 @@
       "effortLevel": "medium"
     },
     "claude-opus-5-5": {
-      "effortLevel": "high"
+      "effortLevel": "medium"
     }
   },
+  "tui": "default",
   "autoMemoryEnabled": false,
   "skipDangerousModePermissionPrompt": true,
   "skipWorkflowUsageWarning": true,
