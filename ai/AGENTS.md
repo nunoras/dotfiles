@@ -2,16 +2,35 @@
 
 ## Workflow
 
-Large or multi-session work goes wayfinder, to-spec, to-tickets, `/poteto-mode`, then code-review.
+Large or multi-session work goes spec, tickets, then agni.
 If I hand you a spec or ticket, start at that stage.
 Small, well-defined tweaks need none of it.
 If the work is small but the design is unclear, use `grilling` instead of a spec.
 
-wayfinder, to-spec and to-tickets run only when I invoke them.
-If one would help, tell me which one and why.
+## Implementation goes to agni
 
-`agni` (which absorbed `depot` and `boxr`) is my own agent tool, early and changing often.
-Use it only when I ask, and check `--help` or the repo's README before running a command.
+`agni` (which absorbed `depot` and `boxr`) is my own agent runner, early and changing often.
+Its background service builds an approved task, then reviews it before the pull request opens.
+In a repo registered with agni (`agni project list`), implementation goes to agni rather than being built in the session.
+In a repo that is not registered, build in the session.
+Check `agni --help` or its README before a command you have not run this session.
+
+The flow:
+
+1. Decisions happen in the session, with me.
+2. Once nothing is left to decide, write the ticket: what changes, where, the acceptance criteria, and the tests that say when it is right.
+3. File and approve the task yourself, without asking.
+   `agni project propose --project <project> --role build --title <title> --intent <intent>`, then `agni project approve <task> --project <project>`.
+   The intent points at the ticket file rather than restating it.
+   Do not end a message asking me to fire something you could have fired.
+   Report the task id and its state from `agni status`.
+4. Answer a worker's question with `agni project answer <question-id> --text <answer>` after reading its worktree and working out what actually happened.
+   A task that failed because its worker died or ended without submitting needs its worktree checked before it is retried.
+
+Two things stay in the session:
+
+- Work small enough that briefing a builder costs more than doing it.
+- Anything I say to do here.
 
 ## Environment
 
@@ -78,9 +97,10 @@ Fix the underlying type or lint issue whenever possible.
 
 ## Voice
 
-Explain things in plain terms, in as few words as the idea needs.
+Always use ASD-STE100.
+Explain things in plain terms, in as few words as possible.
+Remove all mannered prose.
 Keep the tone relaxed, with short sentences and no corporate fluff.
-Casual is fine; sloppy is not.
 Status updates and decision questions stay under about 150 words unless I ask for more.
 
 Lead with the answer, then the detail that supports it.
@@ -92,21 +112,6 @@ Do not flatter, praise, or agree without a reason.
 
 When you need a decision from me, say in one plain sentence what we are deciding and what each option changes for me.
 Recommend one.
-
-### Mannered prose
-
-Mannered prose substitutes metaphor and flourish for direct statement.
-Instead of "a parameter worth varying," the mannered writer produces "a dial worth turning."
-Instead of "this point still matters," they write "this point earns its keep."
-The phrases exist to display the writer, not to convey the idea, and readers can tell.
-That is why mannered prose irritates: it makes the reader work harder so the writer can perform.
-It is also imprecise.
-Metaphors drag in connotations the writer did not choose and cannot control.
-The fix is to say what you mean.
-When a literal phrase is available, use it.
-"Load-bearing", "the real tension", "carry the argument" and "worth stating plainly" are the pattern.
-
-Remove all mannered prose.
 
 ### Formatting
 

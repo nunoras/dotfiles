@@ -104,6 +104,7 @@ link "$HOME/.claude/agents"                   "$repo_root/ai/agents"
 link "$HOME/.claude/scripts"                  "$repo_root/ai/scripts"
 link "$HOME/.claude/settings.json"            "$repo_root/claude/settings.json"
 link "$HOME/.claude/statusline.mjs"           "$repo_root/claude/statusline.mjs"
+link "$HOME/.claude/pstack-models.md"         "$repo_root/claude/pstack-models.md"
 
 link "$HOME/.pi/agent/AGENTS.md"              "$repo_root/ai/AGENTS.md"
 link "$HOME/.pi/agent/settings.json"          "$repo_root/pi/settings.json"

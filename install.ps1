@@ -307,6 +307,7 @@ New-RepoSymlink "$HOME\.claude\settings.json" "$RepoRoot\claude\settings.json"
 
 # Claude Code status line (settings.json points at this path)
 New-RepoSymlink "$HOME\.claude\statusline.mjs" "$RepoRoot\claude\statusline.mjs"
+New-RepoSymlink "$HOME\.claude\pstack-models.md" "$RepoRoot\claude\pstack-models.md"
 
 # PowerShell 7 profile + bundled oh-my-posh theme (kept side by side so the
 # profile finds the theme via $PSScriptRoot)

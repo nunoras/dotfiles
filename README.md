@@ -44,6 +44,7 @@ dotfiles/
 | `ai/agents/` | `~/.claude/agents/` | Claude Code |
 | `claude/settings.json` | `~/.claude/settings.json` | Claude Code |
 | `claude/statusline.mjs` | `~/.claude/statusline.mjs` | Claude Code |
+| `claude/pstack-models.md` | `~/.claude/pstack-models.md` | Claude Code (pstack model sheet) |
 | `shell/Microsoft.PowerShell_profile.ps1` | `~\Documents\PowerShell\…_profile.ps1` | PowerShell 7 (Windows only) |
 | `pi/skills/` | `~/.pi/agent/skills/` | Pi |
 | `pi/extensions/` | `~/.pi/agent/extensions/` | Pi |
