@@ -71,8 +71,8 @@
     },
     "agni": {
       "source": {
-        "source": "directory",
-        "path": "N:\\GitHub\\agni"
+        "source": "git",
+        "url": "https://github.com/nunoras/agni.git"
       }
     }
   },
