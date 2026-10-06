@@ -1,6 +1,6 @@
 ---
 name: kickoff
-description: Write a self-contained kick-off prompt that hands the current session's work to a fresh chat. Use when context is getting bloated, when the user wants to continue elsewhere, or on any of "kick off prompt", "handoff", "hand this off", "continue in a new chat", "start a fresh chat on this".
+description: Write a self-contained kick-off prompt that hands the current session's work to a fresh chat, and resume from a saved one. Use when context is getting bloated, when the user wants to continue elsewhere, or on any of "kick off prompt", "handoff", "hand this off", "continue in a new chat", "start a fresh chat on this", "resume", "pick up where I left off".
 ---
 
 # Kickoff
@@ -25,7 +25,17 @@ Not this skill: summarising a finished task, writing a commit message, or saving
 3. **Separate durable from disposable.** Anything true beyond this task belongs in memory or in the repo docs, not in a handoff prompt. Say so in one line if you write one, then leave it out of the prompt.
 4. **Draft against the template below**, then cut. A handoff longer than the work it describes is a failed handoff.
 5. **Pick the model for the receiving session.** See the rubric below. This session knows what the next chunk of work actually is, so it is the one that should make the call.
-6. **Save and print.** Write to `~/.claude/handoffs/<YYYY-MM-DD>-<slug>.md` (today's real date, slug from the goal). Then print the whole thing in the chat as a single fenced code block so it copies clean.
+6. **Save and print.** Write to `~/.claude/handoffs/<YYYY-MM-DD>-<slug>.md` (today's real date, slug from the goal), starting with the frontmatter below so a later session can find it by repo. Then print the prompt, without the frontmatter, in the chat as a single fenced code block so it copies clean.
+
+```
+---
+repo: <absolute path of the git toplevel, or none>
+branch: <branch>
+head: <short commit>
+agni: <task ids still open for this work, or none>
+status: open
+---
+```
 
 ## What goes in
 
@@ -91,6 +101,18 @@ Add "and drop effort to low" when the work is genuinely mechanical.
 If it is a real toss-up, say Opus. The downside of under-powering a deciding session is larger than the token saving.
 
 State the reason in the same line, in a few words. "Sonnet, the design is settled and this is three files of the same edit" is useful. A bare "Sonnet" is not, because the next session cannot tell whether you thought about it.
+
+## Resume
+
+On "resume" or "pick up where I left off" in a fresh session:
+
+1. List `~/.claude/handoffs/*.md` whose frontmatter `repo` matches the current git toplevel and `status` is `open`, newest first.
+   Show at most five, one line each: date, slug, branch.
+2. If exactly one matches, load it without asking. Otherwise ask which one.
+3. Compare the frontmatter with the live state: current branch and head, and `agni status` for the listed tasks.
+   Report each difference in one line before acting, because the handoff describes the past.
+4. Continue from its NEXT section.
+5. When the handed-off work is done, set `status: done` in the file.
 
 ## Output rules
 

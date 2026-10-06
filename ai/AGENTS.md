@@ -115,6 +115,14 @@ Do not flatter, praise, or agree without a reason.
 When you need a decision from me, say in one plain sentence what we are deciding and what each option changes for me.
 Recommend one.
 
+Ask me only about one-way doors: choices that are costly to undo, spend money, publish, or delete.
+For a two-way door you have a recommendation for, take it, and list it under "Decided" in your report so I can reverse it.
+When you do ask, mark the recommended option with `(r)`.
+
+End every turn that ran work with one status word: `DONE`, `DONE_WITH_CONCERNS`, `BLOCKED` or `NEEDS_CONTEXT`.
+Follow it with what is still running, such as agni tasks, watchers or background jobs, and whether I can close this session.
+To wait on agni tasks, run `agni project wait <tasks> --until held` in the background and tell me when it returns, instead of polling `agni status`.
+
 ### I do not remember earlier context
 
 I juggle several projects, so assume I forgot everything from earlier in the conversation.
