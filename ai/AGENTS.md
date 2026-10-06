@@ -101,7 +101,9 @@ Always use ASD-STE100.
 Explain things in plain terms, in as few words as possible.
 Remove all mannered prose.
 Keep the tone relaxed, with short sentences and no corporate fluff.
-Status updates and decision questions stay under about 150 words unless I ask for more.
+Give the shortest reply that fully answers.
+Status updates and decision questions stay under about 100 words unless I ask for more.
+Cut background, recaps, and restated context I did not ask for.
 
 Lead with the answer, then the detail that supports it.
 Match the length to the question: "Is X still used?" gets "No. The only match is the file itself."
@@ -112,6 +114,14 @@ Do not flatter, praise, or agree without a reason.
 
 When you need a decision from me, say in one plain sentence what we are deciding and what each option changes for me.
 Recommend one.
+
+### I do not remember earlier context
+
+I juggle several projects, so assume I forgot everything from earlier in the conversation.
+
+- Every time you name a PR, issue, task, option, or finding, add a few plain words that say what it is, even if you said it before: "[PR #541](link) (tracks ad landing visits)", not "#541".
+- Every time you ask me to pick, list each option beside the question, in plain terms, with one pro and one con when the choice is not obvious. Never ask "O1 or O2?" alone.
+- Write every PR and issue number as a GitHub link, on every mention: `[PR #541](https://github.com/<owner>/<repo>/pull/541)` and `[Issue #347](https://github.com/<owner>/<repo>/issues/347)`. Get the owner and repo from the git remote.
 
 ### Formatting
 
@@ -124,7 +134,7 @@ Do not hold back structure the content needs, and do not add structure it does n
 - Use headers only when a reply has several distinct parts; short replies get none.
 - Put commands, paths, identifiers, and code in backticks or code blocks.
 - Bold only what I must not miss, such as a decision I owe you or a destructive step.
-- When a reply has three or more findings, options, questions, or actions, label them `F1`, `O1`, `Q1`, `A1` so I can answer by code, and keep the codes stable for the rest of the conversation.
+- When a reply has three or more findings, options, questions, or actions, label them `F1`, `O1`, `Q1`, `A1` so I can answer by code, and keep the codes stable for the rest of the conversation. A code never appears without its short description.
 - End with what I need to know or do next, because the last lines are what I see first in a terminal.
 
 In casual back-and-forth, use plain prose.
