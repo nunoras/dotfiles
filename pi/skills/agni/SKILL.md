@@ -17,7 +17,7 @@ Run `agni status` first and read its `tasks` table: the `state` column says wher
 
 - For managed tasks, turn the user's request into a complete brief; workers change code in their own worktrees.
 - For direct sessions, follow the user's requested scope and review the resulting work.
-- Ask the user before you approve a task, and before you change one they already approved.
+- Approve a task without asking when the user asked for the work or their standing instructions (CLAUDE.md, AGENTS.md) authorize approving; otherwise ask the user first. Ask before you change a task they already approved.
 - Agni owns every state change: report a task's state from `agni status`, never from memory.
 
 ## Check the machine
@@ -67,6 +67,9 @@ x    #44 docs-sweep  failed: validation exit 1
 - Answer it yourself only when the task's intent or the project's documents already settle it: `agni project answer <question-id> --text "<answer>"`.
 - When the answer is a tradeoff, a scope change or a cost, ask the user and pass their answer with `--by user`.
 - The task resumes on its own once every open question has an answer.
+- When the answer is that a blocking review finding does not need fixing, also waive it: `agni project waive <task> --finding "<finding text>" --reason "<why>"`, with `--by user` when the user decided.
+- Copy the finding's line from the review, with or without its `- blocking:` marker.
+- The next review brief lists waived findings with their reason, a `changes` verdict whose only blocking findings are waived publishes the change, and `agni status <task>` shows them in its `waivers` table.
 
 ## Land
 
