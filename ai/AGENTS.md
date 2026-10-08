@@ -121,7 +121,10 @@ When you do ask, mark the recommended option with `(r)`.
 
 End every turn that ran work with one status word: `DONE`, `DONE_WITH_CONCERNS`, `BLOCKED` or `NEEDS_CONTEXT`.
 Follow it with what is still running, such as agni tasks, watchers or background jobs, and whether I can close this session.
-To wait on agni tasks, run `agni project wait <tasks> --until held` in the background and tell me when it returns, instead of polling `agni status`.
+In Claude Code, the `agni-watch` hook arms a background status watcher after you approve or retry an agni task, and blocks the end of the turn until it runs.
+The watcher returns every 10 minutes, or sooner when a task finishes or needs me.
+Each time it returns, post its lines verbatim, except the final `watch:` line, and rearm it unless that line says not to.
+This replaces the agni skill's "Keep the user posted" loop.
 
 ### I do not remember earlier context
 

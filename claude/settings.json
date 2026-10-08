@@ -5,26 +5,26 @@
     "pr": ""
   },
   "permissions": {
-      "allow": [
-        "Bash(*scratchpad/flow/*)",
-        "Bash(*agni-wt/flow/*)",
-        "Bash(git -C /n/GitHub/agni-wt/*)",
-        "Bash(gh pr merge *)",
-        "Bash(gh pr edit *)",
-        "Bash(gh pr view *)",
-        "Bash(gh pr list *)",
-        "Bash(gh pr checks *)",
-        "Bash(gh run list *)",
-        "Bash(gh run view *)",
-        "Bash(agni status *)"
-      ],
-      "defaultMode": "auto"
-    },
-    "autoMode": {
-      "environment": [
-        "owner/app is my own private repo. Merging PRs into staging is routine and approved; merging into main deploys and needs my explicit ask.",
-        "agni is my own local agent runner; its CLI is trusted."
-      ]
+    "allow": [
+      "Bash(*scratchpad/flow/*)",
+      "Bash(*agni-wt/flow/*)",
+      "Bash(git -C /n/GitHub/agni-wt/*)",
+      "Bash(gh pr merge *)",
+      "Bash(gh pr edit *)",
+      "Bash(gh pr view *)",
+      "Bash(gh pr list *)",
+      "Bash(gh pr checks *)",
+      "Bash(gh run list *)",
+      "Bash(gh run view *)",
+      "Bash(agni status *)"
+    ],
+    "defaultMode": "auto"
+  },
+  "autoMode": {
+    "environment": [
+      "owner/app is my own private repo. Merging PRs into staging is routine and approved; merging into main deploys and needs my explicit ask.",
+      "agni is my own local agent runner; its CLI is trusted."
+    ]
   },
   "model": "opus",
   "hooks": {
@@ -69,6 +69,27 @@
             "type": "command",
             "command": "node \"$HOME/.claude/scripts/verify-gate.mjs\"",
             "timeout": 600
+          }
+        ]
+      },
+      {
+        "hooks": [
+          {
+            "type": "command",
+            "command": "node \"$HOME/.claude/scripts/agni-watch-hook.mjs\"",
+            "timeout": 10
+          }
+        ]
+      }
+    ],
+    "PostToolUse": [
+      {
+        "matcher": "Bash|PowerShell|mcp__.*agni_(approve|retry)",
+        "hooks": [
+          {
+            "type": "command",
+            "command": "node \"$HOME/.claude/scripts/agni-watch-hook.mjs\"",
+            "timeout": 10
           }
         ]
       }
