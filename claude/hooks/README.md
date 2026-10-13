@@ -28,6 +28,13 @@ It denies `gh pr|issue create|edit|comment|review`, `git commit`, `agni project 
 The deny reason lists each line, so the agent rewrites it and runs the command again.
 Any other command, or input it cannot parse, passes untouched.
 
+## poll guard (`ai/scripts/poll-guard.mjs`)
+
+A `PreToolUse` hook on the Bash and PowerShell tools.
+It denies a foreground `until`, `while` or `for` loop that sleeps 5 seconds or more, and any foreground sleep of 30 seconds or more.
+The deny reason tells the agent to run the command with `run_in_background: true`, or to use the Monitor tool, so the session stays free and the agent is woken when the wait ends.
+Backgrounded commands, short retry loops, heredoc bodies and input it cannot parse pass untouched.
+
 ## verify gate (`ai/scripts/verify-gate.mjs`)
 
 A `Stop` hook that will not let a turn end while a repo's verify command fails.

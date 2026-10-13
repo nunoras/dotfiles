@@ -58,6 +58,11 @@
             "type": "command",
             "command": "node \"$HOME/.claude/scripts/prose-guard.mjs\"",
             "timeout": 10
+          },
+          {
+            "type": "command",
+            "command": "node \"$HOME/.claude/scripts/poll-guard.mjs\"",
+            "timeout": 10
           }
         ]
       }
@@ -141,5 +146,6 @@
   "skipDangerousModePermissionPrompt": true,
   "skipWorkflowUsageWarning": true,
   "theme": "dark",
-  "autoCompactEnabled": true
+  "autoCompactEnabled": true,
+  "autoCompactWindow": 300000
 }
