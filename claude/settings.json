@@ -108,7 +108,7 @@
   "enabledPlugins": {
     "pstack@open-pstack": true,
     "mattpocock-skills@claude-plugins-official": true,
-    "stripe@claude-plugins-official": true,
+    "stripe@claude-plugins-official": false,
     "agni@agni": true
   },
   "extraKnownMarketplaces": {
