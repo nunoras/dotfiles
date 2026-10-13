@@ -12,9 +12,26 @@ import {
 } from "./agni-watch-lib.mjs";
 
 const INTERVAL_SECONDS = Number(process.env.AGNI_WATCH_INTERVAL ?? 600);
-const TITLE_WIDTH = 40;
-const WAITS_WIDTH = 80;
+const TITLE_WIDTH = 32;
 const RETRY_SECONDS = 15;
+const PLAIN_STATES = {
+  proposed: "not approved",
+  approved: "queued",
+  running: "building",
+  reviewing: "in review",
+  validating: "testing",
+  waiting_on_question: "needs your answer",
+  pr_open: "PR open",
+  landed: "merged",
+  validated: "approved",
+  done: "done",
+  failed: "failed",
+  cancelled: "cancelled",
+  canceled: "cancelled",
+};
+const NEEDS_YOU_STATES = new Set(["waiting_on_question", "pr_open", "failed", "proposed"]);
+const GROUPS = ["Needs you", "Working", "Done"];
+const GROUP_LABEL_WIDTH = Math.max(...GROUPS.map((group) => group.length)) + 2;
 const ATTENTION_STATES = new Set([...FINISHED_STATES, "waiting_on_question"]);
 
 function agniStatus(waitSeconds) {
@@ -49,13 +66,44 @@ function clock() {
   return new Date().toLocaleTimeString([], { hour: "2-digit", minute: "2-digit", hour12: false });
 }
 
+function shortTitle(title) {
+  return clip(title.split(/,|;| with | so | because /)[0].trim(), TITLE_WIDTH);
+}
+
+function plainState(state) {
+  return PLAIN_STATES[state] ?? state.replaceAll("_", " ");
+}
+
+function blockedOnPerson(row) {
+  return row.waitsOn?.startsWith("a person") && !NEEDS_YOU_STATES.has(row.state);
+}
+
+function groupOf({ row }) {
+  if (!row || NEEDS_YOU_STATES.has(row.state) || blockedOnPerson(row)) {
+    return "Needs you";
+  }
+  return FINISHED_STATES.has(row.state) ? "Done" : "Working";
+}
+
 function describe({ task, row }) {
   if (!row) {
-    return `${task.id}  not found`;
+    return `${task.id}  (not found)`;
   }
-  const round = Number(row.round) > 0 ? ` r${row.round}` : "";
-  const waits = row.waitsOn && row.waitsOn !== "nothing" ? `  waits: ${clip(row.waitsOn, WAITS_WIDTH)}` : "";
-  return `${row.project} ${row.id}  ${clip(row.title, TITLE_WIDTH)}  ${row.state}${round}${waits}`;
+  const status = blockedOnPerson(row) ? `${plainState(row.state)}, stuck` : plainState(row.state);
+  return `${row.id}  ${shortTitle(row.title)}  (${status})`;
+}
+
+function report(lines) {
+  const out = [];
+  for (const group of GROUPS) {
+    const members = lines.filter((line) => groupOf(line) === group).map(describe);
+    const entries = members.length > 0 ? members : ["none"];
+    entries.forEach((entry, index) => {
+      const label = index === 0 ? `${group}:` : "";
+      out.push(`${label.padEnd(GROUP_LABEL_WIDTH)} ${entry}`);
+    });
+  }
+  return out;
 }
 
 function sessionArg() {
@@ -94,8 +142,8 @@ function main() {
 
     const lines = tracked(rows, watched);
     console.log(clock());
-    for (const line of lines) {
-      console.log(describe(line));
+    for (const line of report(lines)) {
+      console.log(line);
     }
     const open = lines.filter(({ row }) => row && !FINISHED_STATES.has(row.state)).map(({ task }) => task);
     writeWatched(sessionId, open);
