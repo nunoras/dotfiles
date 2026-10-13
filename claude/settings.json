@@ -63,6 +63,11 @@
             "type": "command",
             "command": "node \"$HOME/.claude/scripts/poll-guard.mjs\"",
             "timeout": 10
+          },
+          {
+            "type": "command",
+            "command": "node \"$HOME/.claude/scripts/pkill-guard.mjs\"",
+            "timeout": 10
           }
         ]
       }
