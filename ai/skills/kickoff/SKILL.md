@@ -1,6 +1,6 @@
 ---
 name: kickoff
-description: Write a self-contained kick-off prompt that hands the current session's work to a fresh chat, and resume from a saved one. Use when context is getting bloated, when the user wants to continue elsewhere, or on any of "kick off prompt", "handoff", "hand this off", "continue in a new chat", "start a fresh chat on this", "resume", "pick up where I left off".
+description: Write a self-contained kick-off prompt that hands the current session's work to a fresh chat, and resume from a saved one. Use when context is getting bloated, when the user wants to continue elsewhere, or on any of "kick off prompt", "handoff", "hand this off", "continue in a new chat", "start a fresh chat on this", "give me a prompt to keep going", "a prompt for my desktop", "a prompt for my windows machine", "do this in a new chat", "resume", "pick up where I left off".
 ---
 
 # Kickoff
@@ -22,10 +22,11 @@ Not this skill: summarising a finished task, writing a commit message, or saving
 
 1. **Scope it.** No argument means the whole session's active thread. An argument narrows it ("just the extrato gate work") - carry only that thread and say so in the prompt.
 2. **Check state for real, do not recall it.** After a long session your memory of the working tree is stale. Run `git status --short`, `git log --oneline -5`, and the current branch. If something was running or half-applied, verify it rather than asserting it.
-3. **Separate durable from disposable.** Anything true beyond this task belongs in memory or in the repo docs, not in a handoff prompt. Say so in one line if you write one, then leave it out of the prompt.
-4. **Draft against the template below**, then cut. A handoff longer than the work it describes is a failed handoff.
-5. **Pick the model for the receiving session.** See the rubric below. This session knows what the next chunk of work actually is, so it is the one that should make the call.
-6. **Save and print.** Write to `~/.claude/handoffs/<YYYY-MM-DD>-<slug>.md` (today's real date, slug from the goal), starting with the frontmatter below so a later session can find it by repo. Then print the prompt, without the frontmatter, in the chat as a single fenced code block so it copies clean.
+3. **Name the target machine.** If the work continues on another machine, find out which one, and write that machine's paths, shell and tools into the prompt. Check where the files and keys it needs live there before you ask the user to find them.
+4. **Separate durable from disposable.** Anything true beyond this task belongs in memory or in the repo docs, not in a handoff prompt. Say so in one line if you write one, then leave it out of the prompt.
+5. **Draft against the template below**, then cut. A handoff longer than the work it describes is a failed handoff.
+6. **Pick the model for the receiving session.** See the rubric below. This session knows what the next chunk of work actually is, so it is the one that should make the call.
+7. **Save and print.** Write to `~/.claude/handoffs/<YYYY-MM-DD>-<slug>.md` (today's real date, slug from the goal), starting with the frontmatter below so a later session can find it by repo. Then print the prompt, without the frontmatter, in the chat as a single fenced code block so it copies clean.
 
 ```
 ---
@@ -43,6 +44,8 @@ status: open
 - **State**: branch, uncommitted files that matter, what currently works and what does not.
 - **Decisions already made**, each with the alternative that was rejected and why. This is the single highest-value section - without it the new chat cheerfully re-proposes the thing you already threw out.
 - **What this session learned that is written down nowhere else.** Measured numbers, a query that works, a failure mode you hit. This is what would cost another hour to rediscover.
+- **The skill that owns the job**, when one does. Name it and tell the new chat to run it, instead of restating its steps. A restated procedure drops the skill's safety checks and goes stale when the skill changes.
+- **Facts the new chat must re-check live**, such as branch heads, merge state and how far one branch is ahead of another. Write the command that checks each one, not the value you saw.
 - **The next concrete action.** Not "continue the work" - the actual first move.
 - **Open questions**, marked as needing the user's call.
 - **Corrections the user made**, phrased as rules, if they would otherwise be repeated.
@@ -63,6 +66,7 @@ GOAL
 <one sentence, plus why if not obvious>
 
 STATE
+Machine: <this one | the other machine, with its repo path and shell>
 Branch: <branch>. <clean | uncommitted: files that matter>
 Working: <what is done and verified>
 Not working: <what is broken or unverified>
@@ -76,7 +80,7 @@ LEARNED (not written down anywhere else)
 - ...
 
 NEXT
-1. <first concrete action, with the file or command>
+1. <first concrete action, with the file, command or skill to run>
 2. <then>
 
 OPEN - needs Nuno's call
