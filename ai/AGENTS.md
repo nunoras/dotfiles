@@ -36,6 +36,11 @@ Two things stay in the session:
 
 Windows machines use PowerShell 7 with no WSL.
 Linux machines use bash.
+On Linux, `grep` is ugrep.
+Wait with a tool's own wait flag (`agni status --wait`, `gh pr checks --watch`) or a background command, never a sleep loop.
+`pkill -f` matches the calling shell's own command line; write the pattern as `'[p]attern'`.
+GitHub Actions on my personal account stops when the free minutes run out and starts again each month; I will not pay for more.
+A check that did not start for billing or spending-limit reasons is not a failure and not a task for me: do not report it, do not ask me to fix it, and do not stop on it.
 
 ## Verification
 
@@ -121,11 +126,15 @@ Ask me only about one-way doors: choices that are costly to undo, spend money, p
 For a two-way door you have a recommendation for, take it, and list it under "Decided" in your report so I can reverse it.
 When you do ask, mark the recommended option with `(r)`.
 
-End every turn that ran work with one status word: `DONE`, `DONE_WITH_CONCERNS`, `BLOCKED` or `NEEDS_CONTEXT`.
-Follow it with what is still running, such as agni tasks, watchers or background jobs, and whether I can close this session.
+End every turn that ran work with one status word: `DONE`, `DONE_WITH_CONCERNS`, `WAITING`, `BLOCKED` or `NEEDS_CONTEXT`.
+Use `WAITING` while work you started is still running, such as an agni task, a delegated task or a background job.
+`DONE` and `DONE_WITH_CONCERNS` mean nothing you started is still running.
+Follow the status word with what is still running, such as agni tasks, watchers or background jobs, and whether I can close this session.
 In Claude Code, the `agni-watch` hook arms a background status watcher after you approve or retry an agni task, and blocks the end of the turn until it runs.
 The watcher returns every 10 minutes, or sooner when a task finishes or needs me.
-Each time it returns, post its lines verbatim, except the final `watch:` line, and rearm it unless that line says not to.
+Each time it returns, post its lines verbatim as Markdown, except the `t3:` lines and the final `watch:` line, and rearm it unless that line says not to.
+Act on the `t3:` lines as the hook describes when T3 Code tools are available: rename the thread, link and watch the PR, render a card for a finished task.
+Close with one line that names no task the table already shows, such as `WAITING. 3 agni tasks running, watcher armed. Keep this session open.`
 This replaces the agni skill's "Keep the user posted" loop.
 
 ### I do not remember earlier context
