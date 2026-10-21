@@ -1,6 +1,6 @@
 #!/usr/bin/env node
 import { readFileSync } from "node:fs";
-import { addWatched, readWatched, watchCommand, watcherAlive } from "./agni-watch-lib.mjs";
+import { addWatched, hasWatchWork, overviewToggle, setOverview, watchCommand, watcherAlive } from "./agni-watch-lib.mjs";
 
 const TASK_ID = /^t-\d+$/;
 const ARM_GRACE_MS = 3000;
@@ -15,7 +15,7 @@ function readInput() {
 
 function tasksFromShell(command) {
   const tasks = [];
-  for (const match of command.matchAll(/\bagni\s+project\s+(?:approve|retry)\b([^;&|\n]*)/g)) {
+  for (const match of command.matchAll(/(?:^|[;&|(])\s*agni\s+project\s+(?:approve|retry)\b([^;&|\n`]*)/gm)) {
     const words = match[1].trim().split(/\s+/);
     const projectIndex = words.indexOf("--project");
     const project = projectIndex === -1 ? null : (words[projectIndex + 1] ?? "").replace(/^["']|["']$/g, "");
@@ -41,7 +41,11 @@ function tasksFromTool(toolName, input) {
 function armInstruction(sessionId) {
   return [
     `Arm the agni watcher now: run \`${watchCommand(sessionId)}\` as a background shell command.`,
-    "Each time it returns, post its lines verbatim except the final `watch:` line, with nothing added.",
+    "Each time it returns, post its lines verbatim as Markdown, except the `t3:` lines and the final `watch:` line, with nothing added.",
+    "Act on each `t3:` line when T3 Code tools are available, and skip them otherwise:",
+    "`t3: title <text>` renames this thread with t3_thread_update; `t3: link <url>` calls link_pull_request; `t3: watch <url>` calls watch_pull_request;",
+    "`t3: card <project> <task>` renders a status card for the finished task with html_render, built from the rows of `agni status --task <task>` that belong to that project (rounds, review verdicts, validations, the PR, and any proof video);",
+    '`t3: overview [flags]` runs `node "$HOME/.claude/scripts/agni-overview.mjs" [flags]` from the project directory and passes its stdout unchanged to html_render with title `agni overview` and height 2000.',
     "If the `watch:` line says rearm, start it again in the background.",
   ].join(" ");
 }
@@ -50,12 +54,25 @@ function sleep(ms) {
   Atomics.wait(new Int32Array(new SharedArrayBuffer(4)), 0, 0, ms);
 }
 
+function overviewFor(toggle, cwd) {
+  if (toggle === "off") {
+    return null;
+  }
+  return toggle === "here" ? { scope: "here", cwd: cwd ?? process.cwd() } : { scope: "all" };
+}
+
 function onPostToolUse(input) {
   const added = tasksFromTool(input.tool_name ?? "", input.tool_input ?? {});
-  if (added.length === 0) {
+  const toggle = overviewToggle(String(input.tool_input?.command ?? ""));
+  if (toggle) {
+    setOverview(input.session_id, overviewFor(toggle, input.cwd));
+  }
+  if (added.length === 0 && (!toggle || toggle === "off")) {
     return;
   }
-  addWatched(input.session_id, added);
+  if (added.length > 0) {
+    addWatched(input.session_id, added);
+  }
   if (watcherAlive(input.session_id)) {
     return;
   }
@@ -67,7 +84,7 @@ function onPostToolUse(input) {
 }
 
 function onStop(input) {
-  if (input.stop_hook_active || readWatched(input.session_id).length === 0) {
+  if (input.stop_hook_active || !hasWatchWork(input.session_id)) {
     return;
   }
   const deadline = Date.now() + ARM_GRACE_MS;

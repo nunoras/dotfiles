@@ -2,42 +2,30 @@
 import { spawnSync } from "node:child_process";
 import {
   FINISHED_STATES,
+  isFinished,
   claimWatcher,
   matches,
-  parseTasks,
+  overviewOn,
+  parseTable,
   readWatched,
   releaseWatcher,
   watchCommand,
   writeWatched,
 } from "./agni-watch-lib.mjs";
+import { pullRequestNumber, render } from "./agni-watch-render.mjs";
+import { overviewFingerprint, projectAt } from "./agni-overview-render.mjs";
 
 const INTERVAL_SECONDS = Number(process.env.AGNI_WATCH_INTERVAL ?? 600);
-const TITLE_WIDTH = 32;
 const RETRY_SECONDS = 15;
-const PLAIN_STATES = {
-  proposed: "not approved",
-  approved: "queued",
-  running: "building",
-  reviewing: "in review",
-  validating: "testing",
-  waiting_on_question: "needs your answer",
-  pr_open: "PR open",
-  landed: "merged",
-  validated: "approved",
-  done: "done",
-  failed: "failed",
-  cancelled: "cancelled",
-  canceled: "cancelled",
-};
-const NEEDS_YOU_STATES = new Set(["waiting_on_question", "pr_open", "failed", "proposed"]);
-const GROUPS = ["Needs you", "Working", "Done"];
-const GROUP_LABEL_WIDTH = Math.max(...GROUPS.map((group) => group.length)) + 2;
 const ATTENTION_STATES = new Set([...FINISHED_STATES, "waiting_on_question"]);
 
 function agniStatus(waitSeconds) {
   const args = waitSeconds > 0 ? ["status", "--wait", String(waitSeconds)] : ["status"];
   const result = spawnSync("agni", args, { encoding: "utf8", maxBuffer: 64 * 1024 * 1024 });
-  return result.status === 0 ? parseTasks(result.stdout) : null;
+  if (result.status !== 0) {
+    return null;
+  }
+  return { tasks: parseTable(result.stdout, "tasks"), projects: parseTable(result.stdout, "projects") };
 }
 
 function pause(seconds) {
@@ -58,52 +46,57 @@ function needsAttention(rows, watched) {
   return tracked(rows, watched).some(({ row }) => !row || ATTENTION_STATES.has(row.state));
 }
 
-function clip(text, width) {
-  return text.length > width ? `${text.slice(0, width - 1)}…` : text;
-}
-
 function clock() {
   return new Date().toLocaleTimeString([], { hour: "2-digit", minute: "2-digit", hour12: false });
 }
 
-function shortTitle(title) {
-  return clip(title.split(/,|;| with | so | because /)[0].trim(), TITLE_WIDTH);
-}
-
-function plainState(state) {
-  return PLAIN_STATES[state] ?? state.replaceAll("_", " ");
-}
-
-function blockedOnPerson(row) {
-  return row.waitsOn?.startsWith("a person") && !NEEDS_YOU_STATES.has(row.state);
-}
-
-function groupOf({ row }) {
-  if (!row || NEEDS_YOU_STATES.has(row.state) || blockedOnPerson(row)) {
-    return "Needs you";
+function pullRequest(row, projects) {
+  const number = pullRequestNumber(row);
+  if (!number && !row.branch) {
+    return null;
   }
-  return FINISHED_STATES.has(row.state) ? "Done" : "Working";
+  const cwd = projects.find((project) => project.name === row.project)?.path;
+  const args = number
+    ? ["pr", "view", number, "--json", "number,url"]
+    : ["pr", "list", "--head", row.branch, "--json", "number,url", "-q", ".[0]"];
+  const result = spawnSync("gh", args, { cwd, encoding: "utf8" });
+  if (result.status !== 0 || !result.stdout.trim()) {
+    return null;
+  }
+  return JSON.parse(result.stdout);
 }
 
-function describe({ task, row }) {
-  if (!row) {
-    return `${task.id}  (not found)`;
+function t3Actions(lines, projects) {
+  const actions = [];
+  for (const { task, row } of lines) {
+    if (!row) {
+      continue;
+    }
+    if (!task.linkedPr) {
+      const found = pullRequest(row, projects);
+      if (found) {
+        actions.push(`link ${found.url}`, `watch ${found.url}`);
+        task.linkedPr = String(found.number);
+      }
+    }
+    if (isFinished(row)) {
+      actions.push(`card ${row.project} ${row.id}`);
+    }
   }
-  const status = blockedOnPerson(row) ? `${plainState(row.state)}, stuck` : plainState(row.state);
-  return `${row.id}  ${shortTitle(row.title)}  (${status})`;
+  return actions;
 }
 
-function report(lines) {
-  const out = [];
-  for (const group of GROUPS) {
-    const members = lines.filter((line) => groupOf(line) === group).map(describe);
-    const entries = members.length > 0 ? members : ["none"];
-    entries.forEach((entry, index) => {
-      const label = index === 0 ? `${group}:` : "";
-      out.push(`${label.padEnd(GROUP_LABEL_WIDTH)} ${entry}`);
-    });
+function overviewRows(overview, status, watched) {
+  const unwatched = status.tasks.filter((row) => !watched.some((task) => matches(row, task)));
+  if (overview?.scope !== "here") {
+    return unwatched;
   }
-  return out;
+  const project = projectAt(status.projects, overview.cwd);
+  return unwatched.filter((row) => row.project === project);
+}
+
+function overviewAction(overview) {
+  return overview.scope === "here" ? "overview --here" : "overview";
 }
 
 function sessionArg() {
@@ -118,7 +111,7 @@ function main() {
     process.exit(64);
   }
   const watched = readWatched(sessionId);
-  if (watched.length === 0) {
+  if (watched.length === 0 && overviewOn(sessionId) === null) {
     console.log(`${clock()}  no agni tasks watched`);
     return;
   }
@@ -126,28 +119,40 @@ function main() {
   claimWatcher(sessionId);
   try {
     const deadline = Date.now() + INTERVAL_SECONDS * 1000;
-    let rows = agniStatus(0) ?? [];
+    let status = agniStatus(0) ?? { tasks: [], projects: [] };
+    let rows = status.tasks;
     const before = fingerprint(rows, watched);
+    const overviewBefore = overviewFingerprint(overviewRows(overviewOn(sessionId), status, watched));
+    let overviewChanged = false;
     for (let remaining = INTERVAL_SECONDS; remaining > 0; remaining = Math.ceil((deadline - Date.now()) / 1000)) {
       const latest = agniStatus(remaining);
       if (!latest) {
         pause(Math.min(remaining, RETRY_SECONDS));
         continue;
       }
-      rows = latest;
-      if (fingerprint(rows, watched) !== before && needsAttention(rows, watched)) {
+      status = latest;
+      rows = latest.tasks;
+      const overview = overviewOn(sessionId);
+      overviewChanged = overview !== null && overviewFingerprint(overviewRows(overview, status, watched)) !== overviewBefore;
+      if (overviewChanged || (fingerprint(rows, watched) !== before && needsAttention(rows, watched))) {
         break;
       }
     }
 
     const lines = tracked(rows, watched);
-    console.log(clock());
-    for (const line of report(lines)) {
-      console.log(line);
+    const actions = t3Actions(lines, status.projects);
+    if (overviewChanged) {
+      actions.push(overviewAction(overviewOn(sessionId)));
     }
-    const open = lines.filter(({ row }) => row && !FINISHED_STATES.has(row.state)).map(({ task }) => task);
+    if (watched.length > 0) {
+      console.log(render({ time: clock(), tracked: lines, actions }));
+    } else if (actions.length > 0) {
+      console.log(actions.map((action) => `t3: ${action}`).join("\n"));
+    }
+    const open = lines.filter(({ row }) => row && !isFinished(row)).map(({ task }) => task);
     writeWatched(sessionId, open);
-    console.log(open.length === 0 ? "watch: all finished, do not rearm" : `watch: rearm with ${watchCommand(sessionId)}`);
+    const keepWatching = open.length > 0 || overviewOn(sessionId) !== null;
+    console.log(keepWatching ? `watch: rearm with ${watchCommand(sessionId)}` : "watch: all finished, do not rearm");
   } finally {
     releaseWatcher(sessionId);
   }

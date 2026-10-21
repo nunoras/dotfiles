@@ -4,6 +4,13 @@ import { join } from "node:path";
 
 export const FINISHED_STATES = new Set(["landed", "done", "validated", "pr_open", "failed", "cancelled", "canceled"]);
 
+export function isFinished(row) {
+  if (row.state === "validated") {
+    return !row.waitsOn || row.waitsOn.startsWith("nothing");
+  }
+  return FINISHED_STATES.has(row.state);
+}
+
 const STATE_DIR = join(homedir(), ".claude", "agni-watch");
 
 export function watchCommand(sessionId) {
@@ -18,21 +25,54 @@ function pidPath(sessionId) {
   return join(STATE_DIR, `${sessionId}.pid`);
 }
 
-export function readWatched(sessionId) {
+function readState(sessionId) {
   try {
-    return JSON.parse(readFileSync(statePath(sessionId), "utf8")).tasks ?? [];
+    const state = JSON.parse(readFileSync(statePath(sessionId), "utf8"));
+    return { tasks: state.tasks ?? [], overview: state.overview?.scope ? state.overview : null };
   } catch {
-    return [];
+    return { tasks: [], overview: null };
   }
 }
 
-export function writeWatched(sessionId, tasks) {
-  if (tasks.length === 0) {
+function writeState(sessionId, state) {
+  if (state.tasks.length === 0 && !state.overview) {
     rmSync(statePath(sessionId), { force: true });
     return;
   }
   mkdirSync(STATE_DIR, { recursive: true });
-  writeFileSync(statePath(sessionId), `${JSON.stringify({ tasks }, null, 2)}\n`);
+  writeFileSync(statePath(sessionId), `${JSON.stringify(state, null, 2)}\n`);
+}
+
+export function readWatched(sessionId) {
+  return readState(sessionId).tasks;
+}
+
+export function writeWatched(sessionId, tasks) {
+  writeState(sessionId, { ...readState(sessionId), tasks });
+}
+
+export function overviewOn(sessionId) {
+  return readState(sessionId).overview;
+}
+
+export function setOverview(sessionId, overview) {
+  writeState(sessionId, { ...readState(sessionId), overview });
+}
+
+export function hasWatchWork(sessionId) {
+  const state = readState(sessionId);
+  return state.overview !== null || state.tasks.length > 0;
+}
+
+export function overviewToggle(command) {
+  const match = command.match(/(?:^|[;&|(])\s*node\s+"?[^\s;&|"]*agni-overview\.mjs"?([^;&|\n]*)/m);
+  if (!match) {
+    return null;
+  }
+  if (/(^|\s)--off\b/.test(match[1])) {
+    return "off";
+  }
+  return /(^|\s)--here\b/.test(match[1]) ? "here" : "all";
 }
 
 export function addWatched(sessionId, added) {
@@ -103,8 +143,12 @@ function splitRow(row) {
 }
 
 export function parseTasks(toon) {
+  return parseTable(toon, "tasks");
+}
+
+export function parseTable(toon, name) {
   const lines = toon.split(/\r?\n/);
-  const start = lines.findIndex((line) => /^tasks\[\d+\]\{/.test(line));
+  const start = lines.findIndex((line) => line.startsWith(`${name}[`) && /^\w+\[\d+\]\{/.test(line));
   if (start === -1) {
     return [];
   }
