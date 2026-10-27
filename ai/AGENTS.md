@@ -32,6 +32,29 @@ Two things stay in the session:
 - Work small enough that briefing a builder costs more than doing it.
 - Anything I say to do here.
 
+## Picking agni or full-send
+
+Before you change code, choose the route by size and say which one you chose.
+
+Big work goes to agni through the flow above.
+Big means it needs a spec or tickets, spans sessions, splits into parallel tasks, or touches several subsystems.
+In a repo that is not registered with agni, build big work in the session.
+
+Small work goes to `full-send`.
+Small means one PR with a settled design that fits in one session.
+Propose it in one line, such as "Small change, one PR. Say 'full send' to ship it.", then wait for me.
+`full-send` merges without asking, so never start it on your own.
+
+A trivial tweak that needs no PR stays in the session.
+
+## tstack
+
+The tstack skills live in `ai/skills` and trigger from plain text, such as "full send", "full stop", "council", "sol loop", "take over" and "babysit".
+
+- To watch a PR, use `babysit-pr`, not `pstack:babysit`.
+- To open a PR, use `file-pr`, not `mattpocock-skills:pr`.
+- The council members are Claude Opus, GPT Sol and Grok, each at high effort.
+
 ## Environment
 
 Windows machines use PowerShell 7 with no WSL.
