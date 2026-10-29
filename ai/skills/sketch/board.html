@@ -1,0 +1,211 @@
+<!doctype html>
+<html lang="en"><head><meta charset="utf-8"><title>Sketch</title>
+<style>
+:root{--bg:#f6f4f1;--panel:#fff;--fg:#1d1b19;--soft:#6b6560;--line:#e6e1db;--bad:#b3261e;font-family:Inter,system-ui,sans-serif}
+*{box-sizing:border-box}html,body{margin:0;height:100%}
+body{display:grid;grid-template-columns:260px 1fr;background:var(--bg);color:var(--fg);font-size:13px}
+aside{background:var(--panel);border-right:1px solid var(--line);display:flex;flex-direction:column;min-height:0}
+.list{flex:1;overflow:auto;padding:10px 0}
+.dec{padding:7px 14px}
+.dec.focus{background:#f3f0ec}
+.dec-top{display:flex;align-items:center;gap:6px;color:var(--soft);font-size:12px;margin-bottom:5px}
+.code{font:600 11px ui-monospace,monospace;color:var(--fg)}
+.q{flex:1;white-space:nowrap;overflow:hidden;text-overflow:ellipsis}
+.lock{visibility:hidden;border:none;background:none;padding:0;font:inherit;font-size:11px;color:var(--soft);cursor:pointer}
+.dec:hover .lock,.dec.focus .lock{visibility:visible}
+.lock:hover{color:var(--fg)}
+.opts{display:flex;flex-wrap:wrap;gap:3px}
+.opt{border:none;background:none;font:600 12px ui-monospace,monospace;color:var(--soft);min-width:26px;height:24px;border-radius:5px;cursor:pointer;padding:0 6px}
+.opt:hover{background:#ece8e3;color:var(--fg)}
+.opt.on{background:var(--fg);color:#fff}
+.opt.rec::after{content:"";display:block;width:3px;height:3px;border-radius:50%;background:currentColor;margin:-1px auto 0;opacity:.6}
+.locked{border-top:1px solid var(--line);padding:8px 14px;font-size:12px;color:var(--soft)}
+.lrow{display:flex;gap:6px;align-items:center;padding:2px 0}
+.lrow .v{flex:1;white-space:nowrap;overflow:hidden;text-overflow:ellipsis}
+.lrow button{visibility:hidden;border:none;background:none;color:var(--soft);cursor:pointer;font-size:11px;padding:0}
+.lrow:hover button{visibility:visible}
+.foot{padding:8px 14px;border-top:1px solid var(--line);display:flex;gap:8px;align-items:center;font-size:12px;color:var(--soft)}
+.foot button{border:none;background:none;font:inherit;color:var(--fg);cursor:pointer;padding:0;text-decoration:underline}
+.foot span{flex:1;white-space:nowrap;overflow:hidden;text-overflow:ellipsis}
+.tip{position:fixed;z-index:20;max-width:280px;background:var(--fg);color:#fff;font-size:12px;line-height:1.35;padding:6px 8px;border-radius:6px;pointer-events:none;display:none}
+main{display:flex;flex-direction:column;min-height:0;min-width:0}
+.bar{display:flex;flex-wrap:wrap;gap:4px 12px;padding:8px 16px;font-size:12px;color:var(--soft);border-bottom:1px solid var(--line)}
+.bar b{color:var(--fg);font-family:ui-monospace,monospace}
+.bar .err{color:var(--bad);font-weight:600}
+body.peek .bar{background:#fbeedd}
+.frame{flex:1;overflow:auto;display:flex;justify-content:center;align-items:flex-start}
+iframe{border:none;background:#fff;width:100%;height:100%}
+.frame.fixed iframe{margin:24px;box-shadow:0 1px 4px #0002;flex:none}
+</style></head>
+<body>
+<aside>
+  <div class="list" id="list"></div>
+  <div class="locked" id="locked" hidden></div>
+  <div class="foot"><button id="copy">Copy picks</button><span id="copied"></span><span title="Up/Down decision. Left/Right or 1-9 option. L lock. Hold Space to flip back to the previous option.">keys</span></div>
+</aside>
+<main>
+  <div class="bar" id="bar"></div>
+  <div class="frame" id="frame"><iframe id="view"></iframe></div>
+</main>
+<div class="tip" id="tip"></div>
+
+<script type="application/json" id="sketch-config">
+{
+  "title": "Example: credits notice",
+  "viewport": null,
+  "decisions": [
+    {"id":"O1","q":"Where the credits notice sits","rec":"B","options":[
+      {"k":"A","label":"Banner on top","pc":"Pro: nobody misses it. Con: pushes the page down."},
+      {"k":"B","label":"Card beside Generate","pc":"Pro: next to the action it is about. Con: easy to skip."},
+      {"k":"C","label":"Toast, bottom right","pc":"Pro: does not move layout. Con: feels temporary."}]},
+    {"id":"O2","q":"Notice tone","rec":"A","options":[
+      {"k":"A","label":"Info","pc":"Pro: calm. Con: weak when credits run low."},
+      {"k":"B","label":"Warn","pc":"Pro: urges action. Con: alarming for a normal state."}]}
+  ]
+}
+</script>
+
+<template id="sketch-page">
+<style>
+body{margin:0;font-family:system-ui,sans-serif;background:#f6f4f1;color:#1d1b19}
+.page{max-width:1040px;margin:28px auto;background:#fff;border-radius:14px;box-shadow:0 1px 3px #0001;overflow:hidden}
+.nav{display:flex;gap:18px;padding:14px 22px;border-bottom:1px solid #e6e1db}.nav b{flex:1}
+.body{display:grid;grid-template-columns:1fr 280px;gap:22px;padding:22px}
+.chart{height:300px;border-radius:10px;background:#fdfcfa;border:1px solid #e6e1db;display:grid;place-items:center;color:#6b6560}
+.side{display:flex;flex-direction:column;gap:12px}
+.card{border:1px solid #e6e1db;border-radius:10px;padding:14px}
+.n{padding:12px 14px;font-size:13px;border-radius:10px;background:#e3efe9;color:#1f4d41}
+[data-o2=B] .n{background:#fbeedd;color:#7a4312}
+.n.banner{border-radius:0;text-align:center}
+.n.toast{position:fixed;right:28px;bottom:24px;max-width:320px;box-shadow:0 8px 24px #0002}
+</style>
+<div class="page">
+  <div class="n banner" data-when="O1=A" data-touch="O2">You have 3 generation credits left this month.</div>
+  <div class="nav"><b>App</b><span>Patterns</span><span>Account</span></div>
+  <div class="body">
+    <div class="chart">chart</div>
+    <div class="side">
+      <div class="n" data-when="O1=B" data-touch="O2">You have 3 generation credits left this month.</div>
+      <div class="card">New pattern</div>
+    </div>
+  </div>
+  <div class="n toast" data-when="O1=C" data-touch="O2">You have 3 generation credits left this month.</div>
+</div>
+</template>
+
+<script>
+const CFG=JSON.parse(document.getElementById('sketch-config').textContent);
+const DEC=CFG.decisions;
+document.title=CFG.title||'Sketch';
+const KEY='sketch:'+location.pathname;
+const saved=JSON.parse(localStorage.getItem(KEY)||'{}');
+const fixedLocks=Object.fromEntries(DEC.filter(d=>d.locked).map(d=>[d.id,d.locked]));
+const pick={...Object.fromEntries(DEC.map(d=>[d.id,d.rec||d.options[0].k])),...(saved.pick||{}),...fixedLocks};
+const locks={...(saved.locks||{}),...fixedLocks};
+const prev={};
+let focus=0,peeking=null;
+const $=id=>document.getElementById(id);
+const view=$('view'),tip=$('tip');
+const errors=[];
+const save=()=>localStorage.setItem(KEY,JSON.stringify({pick,locks}));
+const open=()=>DEC.filter(d=>!locks[d.id]);
+const label=(d,k)=>d.options.find(o=>o.k===k)?.label??'?';
+
+const tagCss=`.sketch-tag{position:fixed;z-index:2147483647;pointer-events:none;outline:2px solid #1d1b19;outline-offset:-2px;border-radius:4px}
+.sketch-tag span{position:absolute;top:2px;right:2px;font:600 11px ui-monospace,monospace;background:#1d1b19;color:#fff;border-radius:4px;padding:1px 6px}`;
+
+if(CFG.viewport){$('frame').classList.add('fixed');view.style.width=CFG.viewport.width+'px';view.style.height=CFG.viewport.height+'px'}
+view.srcdoc=`<!doctype html><html><head><meta charset="utf-8"><style>${tagCss}</style></head><body>${$('sketch-page').innerHTML}</body></html>`;
+view.onload=()=>{validate();apply();render()};
+
+function parseWhen(s){return s.trim().split(/\s+/).map(c=>{const[id,vals]=c.split('=');return{id,vals:(vals||'').split(',')}})}
+function validate(){
+  const doc=view.contentDocument;
+  const byId=Object.fromEntries(DEC.map(d=>[d.id,d]));
+  doc.querySelectorAll('[data-when]').forEach(el=>parseWhen(el.dataset.when).forEach(({id,vals})=>{
+    if(!byId[id])errors.push(`data-when names unknown ${id}`);
+    else vals.forEach(v=>{if(!byId[id].options.some(o=>o.k===v))errors.push(`data-when names unknown ${id}-${v}`)});
+  }));
+  doc.querySelectorAll('[data-touch]').forEach(el=>el.dataset.touch.split(/\s+/).forEach(id=>{if(!byId[id])errors.push(`data-touch names unknown ${id}`)}));
+}
+function apply(){
+  const doc=view.contentDocument;if(!doc?.body)return;
+  for(const d of DEC)doc.documentElement.dataset[d.id.toLowerCase()]=pick[d.id];
+  doc.querySelectorAll('[data-when]').forEach(el=>{
+    el.style.display=parseWhen(el.dataset.when).every(({id,vals})=>vals.includes(pick[id]))?'':'none';
+  });
+  $('bar').innerHTML=(errors.length?`<span class="err">Sketch error: ${[...new Set(errors)].join('; ')}</span>`:'')+
+    DEC.map(d=>`<span><b>${d.id}-${pick[d.id]}</b> ${label(d,pick[d.id])}${locks[d.id]?' (locked)':''}</span>`).join('');
+}
+function touched(doc,id){
+  return [...doc.querySelectorAll('[data-when],[data-touch]')].filter(el=>
+    (el.dataset.when&&parseWhen(el.dataset.when).some(w=>w.id===id))||(el.dataset.touch||'').split(/\s+/).includes(id));
+}
+function tag(id){
+  const doc=view.contentDocument;
+  doc.querySelectorAll('.sketch-tag').forEach(t=>t.remove());
+  touched(doc,id).forEach(el=>{
+    const b=el.getBoundingClientRect();if(!b.width&&!b.height)return;
+    const vw=doc.documentElement.clientWidth,vh=doc.documentElement.clientHeight;
+    const r={left:Math.max(0,b.left),top:Math.max(0,b.top)};r.width=Math.min(vw,b.right)-r.left;r.height=Math.min(vh,b.bottom)-r.top;if(r.width<=0||r.height<=0)return;
+    const t=doc.createElement('div');t.className='sketch-tag';
+    Object.assign(t.style,{left:r.left+'px',top:r.top+'px',width:r.width+'px',height:r.height+'px'});
+    t.innerHTML=`<span>${id}-${pick[id]}</span>`;doc.body.append(t);setTimeout(()=>t.remove(),1500);
+  });
+}
+function choose(d,k){
+  if(pick[d.id]===k)return;
+  prev[d.id]=pick[d.id];pick[d.id]=k;save();apply();render();tag(d.id);
+}
+function lock(d){hideTip();locks[d.id]=pick[d.id];save();render();apply()}
+function showTip(el,text){tip.textContent=text;tip.style.display='block';const r=el.getBoundingClientRect();tip.style.left=Math.min(r.left,innerWidth-290)+'px';tip.style.top=(r.bottom+6)+'px'}
+function hideTip(){tip.style.display='none'}
+function render(){
+  const os=open();focus=Math.min(focus,Math.max(0,os.length-1));
+  $('list').innerHTML='';
+  os.forEach((d,i)=>{
+    const el=document.createElement('div');el.className='dec'+(i===focus?' focus':'');
+    el.innerHTML=`<div class="dec-top"><span class="code">${d.id}</span><span class="q"></span><button class="lock">lock</button></div><div class="opts"></div>`;
+    const q=el.querySelector('.q');q.textContent=d.q;q.onmouseenter=()=>showTip(q,d.q);q.onmouseleave=hideTip;
+    d.options.forEach(o=>{
+      const b=document.createElement('button');b.className='opt'+(pick[d.id]===o.k?' on':'')+(d.rec===o.k?' rec':'');
+      b.textContent=o.k;
+      b.onmouseenter=()=>showTip(b,`${d.id}-${o.k} ${o.label}${d.rec===o.k?' (r)':''}. ${o.pc||''}`);b.onmouseleave=hideTip;
+      b.onclick=()=>{focus=i;choose(d,o.k)};
+      el.querySelector('.opts').append(b);
+    });
+    el.querySelector('.lock').onclick=()=>lock(d);
+    $('list').append(el);
+  });
+  const ld=DEC.filter(d=>locks[d.id]);
+  $('locked').hidden=!ld.length;$('locked').innerHTML='';
+  ld.forEach(d=>{
+    const r=document.createElement('div');r.className='lrow';
+    r.innerHTML=`<span class="code">${d.id}-${locks[d.id]}</span><span class="v"></span>${d.locked?'':'<button>unlock</button>'}`;
+    r.querySelector('.v').textContent=label(d,locks[d.id]);
+    r.querySelector('button')?.addEventListener('click',()=>{delete locks[d.id];save();render();apply()});
+    $('locked').append(r);
+  });
+}
+$('copy').onclick=()=>{
+  const l=DEC.filter(d=>locks[d.id]&&!d.locked).map(d=>`${d.id}-${locks[d.id]}`);
+  const o=open().map(d=>`${d.id}-${pick[d.id]}`);
+  const txt=`Locked: ${l.join(', ')||'none'}. Leaning: ${o.join(', ')||'none'}.`;
+  navigator.clipboard?.writeText(txt);$('copied').textContent=txt;
+};
+function onKey(e){
+  const os=open(),d=os[focus];if(!d)return;
+  const idx=d.options.findIndex(o=>o.k===pick[d.id]),n=d.options.length;
+  if(e.key==='ArrowDown'){focus=Math.min(os.length-1,focus+1);render();e.preventDefault()}
+  else if(e.key==='ArrowUp'){focus=Math.max(0,focus-1);render();e.preventDefault()}
+  else if(e.key==='ArrowRight')choose(d,d.options[(idx+1)%n].k);
+  else if(e.key==='ArrowLeft')choose(d,d.options[(idx-1+n)%n].k);
+  else if(/^[1-9]$/.test(e.key)&&d.options[e.key-1])choose(d,d.options[e.key-1].k);
+  else if(e.key==='l'||e.key==='L')lock(d);
+  else if(e.key===' '&&!e.repeat&&prev[d.id]){e.preventDefault();peeking={id:d.id,back:pick[d.id]};pick[d.id]=prev[d.id];document.body.classList.add('peek');apply();tag(d.id)}
+}
+function onKeyUp(e){if(e.key===' '&&peeking){pick[peeking.id]=peeking.back;peeking=null;document.body.classList.remove('peek');apply()}}
+addEventListener('keydown',onKey);addEventListener('keyup',onKeyUp);
+view.addEventListener('load',()=>{view.contentWindow.addEventListener('keydown',onKey);view.contentWindow.addEventListener('keyup',onKeyUp)});
+</script>
+</body></html>

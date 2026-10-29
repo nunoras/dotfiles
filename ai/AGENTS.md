@@ -54,6 +54,8 @@ The tstack skills live in `ai/skills` and trigger from plain text, such as "full
 - To watch a PR, use `babysit-pr`, not `pstack:babysit`.
 - To open a PR, use `file-pr`, not `mattpocock-skills:pr`.
 - The council members are Claude Opus, GPT Sol and Grok, each at high effort.
+- To sketch a screen, section, layout or interaction, or to show me design options I can see, use the `sketch` skill, in every repo.
+  Never send loose HTML files or screenshots instead.
 
 ## Environment
 
