@@ -46,7 +46,12 @@ one appears.
    smallest change that works. Fix the case that happened, not every case
    that could. If you are on the default branch, create a branch first.
 2. **Prove it.** Get proof for every change you made. See "Proof".
-3. **Get feedback.** Use the `sol-loop` skill to verify changes.
+3. **Get feedback.** Use the `sol-loop` skill to verify changes. Then run the
+   `thermo-nuclear-code-quality-review` skill once if the diff changes more
+   than ~400 lines, pushes a file past 1,000 lines, or adds a new module,
+   abstraction or state machine. Use one reviewer through `delegate_task` on a
+   different vendor than the builder, not a panel. Apply only findings that
+   remove complexity, and dismiss the rest with a written reason.
 4. **File the PR** with the `file-pr` skill. Rebase onto the latest default
    branch first. Add one short line to the description that says how you proved
    the change.
