@@ -7,26 +7,22 @@
   "permissions": {
     "allow": [
       "Bash(*scratchpad/flow/*)",
-      "Bash(*agni-wt/flow/*)",
-      "Bash(git -C /n/GitHub/agni-wt/*)",
       "Bash(gh pr merge *)",
       "Bash(gh pr edit *)",
       "Bash(gh pr view *)",
       "Bash(gh pr list *)",
       "Bash(gh pr checks *)",
       "Bash(gh run list *)",
-      "Bash(gh run view *)",
-      "Bash(agni status *)"
+      "Bash(gh run view *)"
     ],
     "defaultMode": "auto"
   },
-  "autoMode": {
-    "environment": [
-      "owner/app is my own private repo. Merging PRs into staging is routine and approved; merging into main deploys and needs my explicit ask.",
-      "agni is my own local agent runner; its CLI is trusted."
-    ]
+  "model": "opus[1m]",
+  "skillOverrides": {
+    "mattpocock-skills:tdd": "off",
+    "mattpocock-skills:code-review": "off",
+    "mattpocock-skills:resolving-merge-conflicts": "off"
   },
-  "model": "opus",
   "hooks": {
     "SessionStart": [
       {
@@ -81,27 +77,6 @@
             "timeout": 600
           }
         ]
-      },
-      {
-        "hooks": [
-          {
-            "type": "command",
-            "command": "node \"$HOME/.claude/scripts/agni-watch-hook.mjs\"",
-            "timeout": 10
-          }
-        ]
-      }
-    ],
-    "PostToolUse": [
-      {
-        "matcher": "Bash|PowerShell|mcp__.*agni_(approve|retry)",
-        "hooks": [
-          {
-            "type": "command",
-            "command": "node \"$HOME/.claude/scripts/agni-watch-hook.mjs\"",
-            "timeout": 10
-          }
-        ]
       }
     ]
   },
@@ -113,8 +88,7 @@
   "enabledPlugins": {
     "pstack@open-pstack": true,
     "mattpocock-skills@claude-plugins-official": true,
-    "stripe@claude-plugins-official": false,
-    "agni@agni": true
+    "stripe@claude-plugins-official": false
   },
   "extraKnownMarketplaces": {
     "open-pstack": {
@@ -122,18 +96,7 @@
         "source": "git",
         "url": "https://github.com/ericlitman/open-pstack.git"
       }
-    },
-    "agni": {
-      "source": {
-        "source": "git",
-        "url": "https://github.com/nunoras/agni.git"
-      }
     }
-  },
-  "skillOverrides": {
-    "mattpocock-skills:tdd": "off",
-    "mattpocock-skills:code-review": "off",
-    "mattpocock-skills:resolving-merge-conflicts": "off"
   },
   "feedbackDrafts": "off",
   "effortLevel": "high",
@@ -145,6 +108,7 @@
       "effortLevel": "medium"
     }
   },
+  "autoCompactWindow": 300000,
   "awaySummaryEnabled": false,
   "tui": "default",
   "autoMemoryEnabled": false,
@@ -152,5 +116,10 @@
   "skipWorkflowUsageWarning": true,
   "theme": "dark",
   "autoCompactEnabled": true,
-  "autoCompactWindow": 300000
+  "switchModelsOnFlag": false,
+  "autoMode": {
+    "environment": [
+      "owner/app is my own private repo. Merging PRs into staging is routine and approved; merging into main deploys and needs my explicit ask."
+    ]
+  }
 }
