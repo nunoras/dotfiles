@@ -2,48 +2,42 @@
 
 ## Workflow
 
-Large or multi-session work goes spec, tickets, then agni.
+Large or multi-session work goes spec, tickets, then T3 Code threads.
 If I hand you a spec or ticket, start at that stage.
 Small, well-defined tweaks need none of it.
 If the work is small but the design is unclear, use `grilling` instead of a spec.
 
-## Implementation goes to agni
+## Big work goes to T3 Code threads
 
-`agni` (which absorbed `depot` and `boxr`) is my own agent runner, early and changing often.
-Its background service builds an approved task, then reviews it before the pull request opens.
-In a repo registered with agni (`agni project list`), implementation goes to agni rather than being built in the session.
-In a repo that is not registered, build in the session.
-Check `agni --help` or its README before a command you have not run this session.
+Agni is retired.
+Big work runs as T3 Code threads, each following `full-send`.
 
 The flow:
 
 1. Decisions happen in the session, with me.
 2. Once nothing is left to decide, write the ticket: what changes, where, the acceptance criteria, and the tests that say when it is right.
-3. File and approve the task yourself, without asking.
-   `agni project propose --project <project> --role build --title <title> --intent <intent>`, then `agni project approve <task> --project <project>`.
-   The intent points at the ticket file rather than restating it.
-   Do not end a message asking me to fire something you could have fired.
-   Report the task id and its state from `agni status`.
-4. Answer a worker's question with `agni project answer <question-id> --text <answer>` after reading its worktree and working out what actually happened.
-   A task that failed because its worker died or ended without submitting needs its worktree checked before it is retried.
+3. Launch the threads yourself, without asking: one per ticket, or one per chain of tickets that depend on each other, delivered in order.
+   Use `t3_thread_launch` in a new worktree, with a prompt that starts `Full send, poteto-mode:` and points at the ticket file rather than restating it.
+   Do not end a message asking me to launch something you could have launched.
+   Report each thread's link.
+4. A thread's questions reach me through the T3 inbox; I answer them there.
 
 Two things stay in the session:
 
-- Work small enough that briefing a builder costs more than doing it.
+- Work small enough that briefing a thread costs more than doing it.
 - Anything I say to do here.
 
-## Picking agni or full-send
+## Picking threads or full-send
 
 Before you change code, choose the route by size and say which one you chose.
 
-Big work goes to agni through the flow above.
+Big work goes to threads through the flow above.
 Big means it needs a spec or tickets, spans sessions, splits into parallel tasks, or touches several subsystems.
-In a repo that is not registered with agni, build big work in the session.
 
-Small work goes to `full-send`.
+Small work goes to `full-send` in this session.
 Small means one PR with a settled design that fits in one session.
 Propose it in one line, such as "Small change, one PR. Say 'full send' to ship it.", then wait for me.
-`full-send` merges without asking, so never start it on your own.
+`full-send` merges without asking, so never start it on your own for small work.
 
 A trivial tweak that needs no PR stays in the session.
 
@@ -62,7 +56,7 @@ The tstack skills live in `ai/skills` and trigger from plain text, such as "full
 Windows machines use PowerShell 7 with no WSL.
 Linux machines use bash.
 On Linux, `grep` is ugrep.
-Wait with a tool's own wait flag (`agni status --wait`, `gh pr checks --watch`) or a background command, never a sleep loop.
+Wait with a tool's own wait flag (`gh pr checks --watch`) or a background command, never a sleep loop.
 `pkill -f` matches the calling shell's own command line; write the pattern as `'[p]attern'`.
 GitHub Actions on my personal account stops when the free minutes run out and starts again each month; I will not pay for more.
 A check that did not start for billing or spending-limit reasons is not a failure and not a task for me: do not report it, do not ask me to fix it, and do not stop on it.
@@ -152,15 +146,10 @@ For a two-way door you have a recommendation for, take it, and list it under "De
 When you do ask, mark the recommended option with `(r)`.
 
 End every turn that ran work with one status word: `DONE`, `DONE_WITH_CONCERNS`, `WAITING`, `BLOCKED` or `NEEDS_CONTEXT`.
-Use `WAITING` while work you started is still running, such as an agni task, a delegated task or a background job.
+Use `WAITING` while work you started is still running, such as a thread you launched, a delegated task or a background job.
 `DONE` and `DONE_WITH_CONCERNS` mean nothing you started is still running.
-Follow the status word with what is still running, such as agni tasks, watchers or background jobs, and whether I can close this session.
-In Claude Code, the `agni-watch` hook arms a background status watcher after you approve or retry an agni task, and blocks the end of the turn until it runs.
-The watcher returns every 10 minutes, or sooner when a task finishes or needs me.
-Each time it returns, post its lines verbatim as Markdown, except the `t3:` lines and the final `watch:` line, and rearm it unless that line says not to.
-Act on the `t3:` lines as the hook describes when T3 Code tools are available: rename the thread, link and watch the PR, render a card for a finished task.
-Close with one line that names no task the table already shows, such as `WAITING. 3 agni tasks running, watcher armed. Keep this session open.`
-This replaces the agni skill's "Keep the user posted" loop.
+Follow the status word with a few words on what is still running.
+Never add task titles, PR descriptions or "keep this session open" to the status line.
 
 ### I do not remember earlier context
 

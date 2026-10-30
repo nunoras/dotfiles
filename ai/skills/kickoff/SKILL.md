@@ -33,7 +33,7 @@ Not this skill: summarising a finished task, writing a commit message, or saving
 repo: <absolute path of the git toplevel, or none>
 branch: <branch>
 head: <short commit>
-agni: <task ids still open for this work, or none>
+threads: <T3 thread ids still running for this work, or none>
 status: open
 ---
 ```
@@ -113,7 +113,7 @@ On "resume" or "pick up where I left off" in a fresh session:
 1. List `~/.claude/handoffs/*.md` whose frontmatter `repo` matches the current git toplevel and `status` is `open`, newest first.
    Show at most five, one line each: date, slug, branch.
 2. If exactly one matches, load it without asking. Otherwise ask which one.
-3. Compare the frontmatter with the live state: current branch and head, and `agni status` for the listed tasks.
+3. Compare the frontmatter with the live state: current branch and head, and `t3_thread_read` for the listed threads.
    Report each difference in one line before acting, because the handoff describes the past.
 4. Continue from its NEXT section.
 5. When the handed-off work is done, set `status: done` in the file.
