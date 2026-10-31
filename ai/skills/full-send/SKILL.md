@@ -80,6 +80,8 @@ reproduction, a screenshot. Use the most direct proof the change allows:
 - For UI and runtime behavior, run the app and look at the change. Green mocked
   tests do not prove that the user experience works. Attach screenshots to the
   PR when they help and you have a way to upload them.
+- When the change depends on a setting hosted in a dashboard, read the
+  production value of that setting.
 
 When you cannot find a way to prove a change, you do not have full confidence.
 Ask the user.
@@ -95,6 +97,8 @@ Full confidence means all of these are true on the latest commit:
 - No human review still requests changes.
 - The branch is up to date with the default branch, and GitHub reports it as
   mergeable.
+- Each failure that also happens on base has a filed issue that the report
+  links, and a quarantine entry if the repo has one. A mention is not enough.
 
 Merge with the method the repo uses. Check the allowed methods and recent merged
 PRs. If the repo uses a merge queue or auto-merge, stay until GitHub reports the
@@ -122,6 +126,9 @@ Ask only when you cannot continue alone:
 
 Decide everything else yourself with sensible defaults, and list those decisions
 in the report.
+
+When a step needs the user to sign in on a web page, open the page for them and
+ask in one line.
 
 If no question tool is available, or the tool returns no answer, take the safe
 path: leave the PR open and unmerged, and start your final message with the

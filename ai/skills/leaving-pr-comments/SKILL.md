@@ -10,7 +10,7 @@ note callout:
 
 ```md
 > [!NOTE]
-> 🤖 **<model> responding on behalf of <user>**
+> **<model> responding on behalf of <user>**
 
 Actual comment starts here.
 ```
@@ -23,9 +23,9 @@ If the harness does not expose a model name, use the harness name. Do not guess.
 Before posting, check the entire comment, including quoted text and
 attachments, for secrets and private details.
 
-Keep the attribution inside the note and the actual reply outside it. The
-context line must start with the robot emoji. Do not add a horizontal rule,
-Setext underline, heading, signature footer, or a second attribution.
+Keep the attribution inside the note and the actual reply outside it. Do not
+add a horizontal rule, Setext underline, heading, signature footer, or a second
+attribution.
 
 Apply this format to top-level PR comments, inline review comments, replies to
 bots or reviewers, and written explanations used before resolving or

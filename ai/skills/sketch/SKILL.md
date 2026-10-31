@@ -12,46 +12,55 @@ Clicking a letter changes the page at once, and the parts it changed get an outl
 
 ## Build one
 
-1. Copy `board.html` to a new folder for the sketch, named for the decision, such as `~/sketches/credits-notice/index.html`.
+1. Look at 2 or 3 real products that solve the same problem.
+   Then draw the part that changes at real size, in the app's own colors, type and spacing.
+2. Copy `board.html` to a new folder for the sketch, named for the decision, such as `~/sketches/credits-notice/index.html`.
    Never write a sketch into `/tmp` or a repo root.
-2. Replace the JSON in `<script id="sketch-config">`:
+3. Replace the JSON in `<script id="sketch-config">`:
    - `title`: the page title.
    - `viewport`: `null` to fill the right side, or `{"width":390,"height":844}` for a fixed screen such as a phone.
    - `decisions`: one entry per decision, in the order the user should take them.
      Each has `id` (`O1`, `O2`, ...), `q` (the question in a few words), `rec` (the recommended option letter) and `options`.
      Each option has `k` (`A`, `B`, ...), `label` (two to four words) and `pc` (one pro and one con).
      Keep codes stable for the whole conversation; a new decision gets the next free number.
-3. Replace the contents of `<template id="sketch-page">` with the page: its own `<style>` and its markup.
+4. Replace the contents of `<template id="sketch-page">` with the page: its own `<style>` and its markup.
    It renders in an iframe, so its CSS never touches the board.
    Build the whole page or section, not a fragment, so each option is seen in place.
-4. Wire each option into the page:
+5. Wire each option into the page:
    - `data-when="O3=A"` shows an element only for that option.
      `O3=A,B` matches either; `O3=A O4=B` needs both.
    - The iframe's `<html>` carries `data-o3="A"` for every decision, so CSS can change a style per option: `[data-o4=B] .notice{background:#fbeedd}`.
    - `data-touch="O4"` marks an element a CSS rule changes, so it gets the tag when `O4` switches.
      Elements with `data-when` are tagged without it.
-5. Serve the folder and share it on the tailnet:
+6. Serve the folder so it outlives the session, and share it on the tailnet:
    ```
-   python -m http.server <port> --bind 127.0.0.1 --directory <folder>
+   systemd-run --user --unit=sketch-<name> python -m http.server <port> --bind 127.0.0.1 --directory <folder>
    tailscale serve --bg --https=<tailnet port> http://localhost:<port>
    ```
-   Pick ports `tailscale serve status` does not already list.
+   Off Linux, use the platform's own user service.
+   Read `tailscale serve status` first, and do not reuse a port or path it lists.
    Get the host with `tailscale status --json | jq -r .Self.DNSName`.
-   Send `https://<host>:<tailnet port>/`, never a localhost or file URL.
-6. Screenshot it headless and look before you send it:
+   Open `https://<host>:<tailnet port>/` yourself, then send it, never a localhost or file URL.
+7. Screenshot it headless and look before you send it:
    ```
    chromium --headless=new --disable-gpu --hide-scrollbars --window-size=1400,900 --virtual-time-budget=2000 --screenshot=<png> http://localhost:<port>/
    ```
-   On Windows use `msedge` with the same flags.
+   On Windows, or for a fixed or phone viewport, do not use `--window-size`.
+   Capture through a CDP harness (`msedge` on Windows) that sets device metrics and touch emulation.
    A red "Sketch error" in the top bar means a `data-when` or `data-touch` names a decision or option that does not exist.
    Render the recommended option of every decision at least once.
 
 ## Taking picks back
 
+After you send the board URL, wait for the user to paste the Copy picks line.
+Do not also ask through a question tool.
+
 The user presses Copy picks and pastes a line such as `Locked: O3-B. Leaning: O4-A.`
 For each locked decision, add `"locked":"B"` to its entry in the config.
 A decision with `locked` in the file stays locked in every browser and drops out of the left menu.
 Leaning picks are not decisions; ask about them or keep them open.
+A pick that comes with a caveat becomes a new option on the board.
+Nothing outside the board changes until the decision is locked.
 
 When the user changes an option rather than picking one, edit that option or add a new letter, and keep the other codes.
 When a new question comes up, add it as a new decision on the same board rather than starting a new file.

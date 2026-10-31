@@ -18,6 +18,7 @@ The flow:
 2. Once nothing is left to decide, write the ticket: what changes, where, the acceptance criteria, and the tests that say when it is right.
 3. Launch the threads yourself, without asking: one per ticket, or one per chain of tickets that depend on each other, delivered in order.
    Use `t3_thread_launch` in a new worktree, with a prompt that starts `Full send, poteto-mode:` and points at the ticket file rather than restating it.
+   The prompt names this session's thread id, and the thread sends its result or blocker there with `t3_thread_send`.
    Do not end a message asking me to launch something you could have launched.
    Report each thread's link.
 4. A thread's questions reach me through the T3 inbox; I answer them there.
@@ -57,6 +58,8 @@ Windows machines use PowerShell 7 with no WSL.
 Linux machines use bash.
 On Linux, `grep` is ugrep.
 Wait with a tool's own wait flag (`gh pr checks --watch`) or a background command, never a sleep loop.
+On Windows, give Node, Python and other non-bash tools a `cygpath -w` path or a `mktemp` path, never a literal `/tmp/...`.
+Git Bash maps `/tmp` to `%TEMP%`, but Node and Python read it as `C:	mp`.
 `pkill -f` matches the calling shell's own command line; write the pattern as `'[p]attern'`.
 GitHub Actions on my personal account stops when the free minutes run out and starts again each month; I will not pay for more.
 A check that did not start for billing or spending-limit reasons is not a failure and not a task for me: do not report it, do not ask me to fix it, and do not stop on it.

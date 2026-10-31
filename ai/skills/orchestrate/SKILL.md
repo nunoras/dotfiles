@@ -92,6 +92,7 @@ Use a Codex model only where the brief says so (for example, only for a sol-loop
 - Launch work threads on the work machine, never on the orchestrator's machine, in a new worktree from the right base branch.
 - One thread per ticket, or one per chain of tickets that depend on each other.
 - Point the prompt at the ticket file; do not restate it.
+- Name your own thread id in the prompt. The thread sends its result or blocker there with `t3_thread_send`.
 - Follow the repo's own skills for repo processes, such as `release`.
 - Report every thread you launch with its link.
 

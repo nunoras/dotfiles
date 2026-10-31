@@ -115,3 +115,6 @@ otherwise report that the PR is ready. Right before a merge, run `git fetch` and
 check the PR again. Never merge when it is BEHIND or DIRTY, or when base commits
 that landed after the last green run touch this PR's files. Rebase, push, and
 wait for green again.
+
+"Closes #N" fires only on the default branch. After a merge into another base,
+close each linked issue by hand.
