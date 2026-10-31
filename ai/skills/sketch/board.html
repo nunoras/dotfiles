@@ -97,7 +97,7 @@ body{margin:0;font-family:system-ui,sans-serif;background:#f6f4f1;color:#1d1b19}
 const CFG=JSON.parse(document.getElementById('sketch-config').textContent);
 const DEC=CFG.decisions;
 document.title=CFG.title||'Sketch';
-const KEY='sketch:'+location.pathname;
+const KEY='sketch:'+location.pathname+':'+(CFG.title||'');
 const saved=JSON.parse(localStorage.getItem(KEY)||'{}');
 const fixedLocks=Object.fromEntries(DEC.filter(d=>d.locked).map(d=>[d.id,d.locked]));
 const pick={...Object.fromEntries(DEC.map(d=>[d.id,d.rec||d.options[0].k])),...(saved.pick||{}),...fixedLocks};

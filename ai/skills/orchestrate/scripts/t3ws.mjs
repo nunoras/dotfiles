@@ -21,6 +21,8 @@ Commands:
   send <threadId> <text|@file> [--queue] [--steer] [--model <instance>/<model>[/<effort>]]
   launch --project <id> --title <t> --message <text|@file> [--base <ref>] [--branch <b>] [--model ...]
   ping <threadId>                       Check the websocket and auth with one read
+  questions <threadId>                  Pending questions the thread asks the user
+  answer <threadId> <json|@file>        Answer the pending question, as {"<question>": "<answer>"}
 
 Flags:
   --chars <n>   Cap each message at n characters. Default 400
@@ -75,6 +77,12 @@ function latestRun(db, threadId) {
     .prepare(
       "select run_id as runId, ordinal, provider_instance_id as instance, status, requested_at as requested, completed_at as completed, payload_json from orchestration_v2_projection_runs where thread_id = ? order by ordinal desc limit 1",
     )
+    .get(threadId);
+}
+
+function steerableRun(db, threadId) {
+  return db
+    .prepare("select run_id as runId from orchestration_v2_projection_runs where thread_id = ? and status in ('running', 'waiting') order by ordinal desc limit 1")
     .get(threadId);
 }
 
@@ -279,7 +287,9 @@ async function cmdSend(db, positional, flags) {
   if (!modelSelection) throw new Error("the thread has no model selection; pass --model");
   const run = latestRun(db, threadId);
   const active = run && ["queued", "preparing", "starting", "running", "waiting"].includes(run.status);
-  const dispatchMode = active ? { type: flags.steer ? "steer_active" : "queue_after_active", ...(flags.steer ? { targetRunId: run.runId } : {}) } : { type: "start_immediately" };
+  const steerTarget = flags.steer && active ? steerableRun(db, threadId) : null;
+  if (flags.steer && active && !steerTarget) throw new Error(`no running turn to steer; run ${run.ordinal} is ${run.status}, pass --queue`);
+  const dispatchMode = active ? (steerTarget ? { type: "steer_active", targetRunId: steerTarget.runId } : { type: "queue_after_active" }) : { type: "start_immediately" };
   if (active && !flags.queue && !flags.steer) throw new Error(`run ${run.ordinal} is ${run.status}; pass --queue to send after it, or --steer to add it to the running turn`);
   const commands = [];
   if (flags.model) commands.push({ type: "thread.model-selection.set", commandId: crypto.randomUUID(), threadId, modelSelection });
@@ -299,6 +309,44 @@ async function cmdSend(db, positional, flags) {
   const results = [];
   for (const command of commands) results.push({ type: command.type, result: await rpc("orchestration.dispatchCommand", command) });
   return results;
+}
+
+function pendingQuestion(db, threadId) {
+  const request = db
+    .prepare("select runtime_request_id as id, payload_json as payload from orchestration_v2_projection_runtime_requests where thread_id = ? and kind = 'user_input' and status = 'pending' order by created_at desc limit 1")
+    .get(threadId);
+  if (!request) return null;
+  const nativeId = JSON.parse(request.payload).nativeRequestRef?.nativeId;
+  const item = nativeId
+    ? db.prepare("select payload_json as payload from orchestration_v2_projection_turn_items where payload_json like ? limit 1").get(`%${nativeId}%`)
+    : null;
+  const questions = item ? JSON.parse(item.payload).input?.questions ?? [] : [];
+  return { requestId: request.id, questions };
+}
+
+function cmdQuestions(db, threadId) {
+  const pending = pendingQuestion(db, threadId);
+  if (!pending) return { pending: false };
+  return {
+    pending: true,
+    questions: pending.questions.map((q) => ({ question: q.question, options: (q.options ?? []).map((o) => o.label) })),
+  };
+}
+
+async function cmdAnswer(db, positional, flags) {
+  const [threadId, raw] = positional;
+  if (!threadId || raw === undefined) throw new Error("answer wants <threadId> <json|@file>");
+  const pending = pendingQuestion(db, threadId);
+  if (!pending) throw new Error(`thread ${threadId} has no pending question`);
+  const command = {
+    type: "runtime-request.respond",
+    commandId: crypto.randomUUID(),
+    threadId,
+    requestId: pending.requestId,
+    answers: JSON.parse(textArg(raw)),
+  };
+  if (flags["dry-run"]) return command;
+  return await rpc("orchestration.dispatchCommand", command);
 }
 
 async function cmdLaunch(db, flags) {
@@ -359,6 +407,10 @@ async function main() {
       return print(await cmdSend(db, positional, flags), true);
     case "launch":
       return print(await cmdLaunch(db, flags), true);
+    case "questions":
+      return print(cmdQuestions(db, positional[0]), true);
+    case "answer":
+      return print(await cmdAnswer(db, positional, flags), true);
     case "ping": {
       const projection = await rpc("orchestration.getThreadProjection", { threadId: positional[0] });
       return print({ ok: true, thread: projection.thread?.title ?? null }, true);
