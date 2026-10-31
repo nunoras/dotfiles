@@ -49,6 +49,8 @@ status: open
 - **The next concrete action.** Not "continue the work" - the actual first move.
 - **Open questions**, marked as needing the user's call.
 - **Corrections the user made**, phrased as rules, if they would otherwise be repeated.
+- **Tool names exactly as the user said them**, such as `magnific-axi`, not "Magnific MCP".
+- **Only what the target machine can see.** Push local tasks, `/tmp` files and unpushed branches first, or leave them out.
 
 ## What stays out
 
