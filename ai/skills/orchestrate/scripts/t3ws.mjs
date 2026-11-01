@@ -16,7 +16,7 @@ for example: ssh <host> node ~/.claude/skills/orchestrate/scripts/t3ws.mjs threa
 Commands:
   projects                              List projects
   threads [--project <id>] [--days <n>] List live threads, newest first, with the latest run
-  status <threadId>...                  Latest run, last assistant message, linked PRs
+  status <threadId>...                  Verdict (running, asking, done, failed, stalled, idle), latest run, last message, PRs with live gh state
   read <threadId> [--limit <n>]         Last messages of a thread, oldest first
   send <threadId> <text|@file> [--queue] [--steer] [--model <instance>/<model>[/<effort>]]
   launch --project <id> --title <t> --message <text|@file> [--base <ref>] [--branch <b>] [--model ...]
@@ -137,18 +137,45 @@ function cmdThreads(db, flags) {
   });
 }
 
+const ACTIVE_RUN = ["queued", "preparing", "starting", "running", "waiting"];
+const STALLED_TAIL = /(\bWAITING\b[^\n]*|No response requested\.)\s*$/;
+
+function liveState(url, snapshotState) {
+  const viewed = spawnSync("gh", ["pr", "view", url, "--json", "state", "--jq", ".state"], { encoding: "utf8" });
+  const state = viewed.status === 0 ? viewed.stdout.trim() : "";
+  return state ? { state, source: "gh" } : { state: snapshotState ?? "unknown", source: "t3 snapshot" };
+}
+
+function mentionedPullRequests(text) {
+  const urls = (text ?? "").match(/https:\/\/github\.com\/[\w.-]+\/[\w.-]+\/pull\/\d+/g) ?? [];
+  return [...new Set(urls)].map((url) => ({ url, state: null }));
+}
+
+function verdict(run, message, question, prs) {
+  if (run && ACTIVE_RUN.includes(run.status)) return "running";
+  if (question) return "asking";
+  if (prs.length > 0 && prs.every((pr) => String(pr.state).toUpperCase() === "MERGED")) return "done";
+  if (run?.status === "failed") return "failed";
+  if (message && STALLED_TAIL.test(message.text ?? "")) return "stalled";
+  return "idle";
+}
+
 function cmdStatus(db, ids, chars) {
   return ids.map((id) => {
     const thread = threadRow(db, id);
     if (!thread) return { id, error: "no such thread" };
     const run = latestRun(db, id);
     const message = lastAssistant(db, id);
+    const linked = pullRequests(db, id);
+    const named = linked.length > 0 ? linked : mentionedPullRequests(message?.text);
+    const prs = named.map((pr) => ({ url: pr.url, ...liveState(pr.url, pr.state) }));
     return {
       id,
       title: thread.title,
+      verdict: verdict(run, message, pendingQuestion(db, id), prs),
       run: run ? { ordinal: run.ordinal, status: run.status, instance: run.instance, requested: run.requested, completed: run.completed, failure: runFailure(run) } : null,
       lastMessage: message ? { at: message.at, text: clip(message.text, chars) } : null,
-      pullRequests: pullRequests(db, id),
+      pullRequests: prs,
     };
   });
 }
@@ -164,7 +191,7 @@ function cmdRead(db, id, limit, chars) {
 }
 
 function issueToken() {
-  const issued = spawnSync("t3", ["auth", "session", "issue", "--token-only", "--ttl", "10m", "--label", "orchestrate"], { encoding: "utf8", shell: process.platform === "win32" });
+  const issued = spawnSync("t3", ["auth", "session", "issue", "--token-only", "--ttl", "10m", "--label", "orchestrate"], { encoding: "utf8" });
   const token = (issued.stdout ?? "").trim();
   if (issued.status !== 0 || token.length < 20) throw new Error(`t3 auth session issue failed: ${(issued.stderr ?? "").slice(0, 300)}`);
   return token;
@@ -378,12 +405,12 @@ function print(value, json) {
   if (json || typeof value !== "object") return console.log(JSON.stringify(value, null, 2));
   for (const item of Array.isArray(value) ? value : [value]) {
     if (item.lastMessage !== undefined || item.run?.status) {
-      console.log(`== ${item.title ?? ""} ${item.id}`);
+      console.log(`== ${item.verdict ? `[${item.verdict}] ` : ""}${item.title ?? ""} ${item.id}`);
       if (item.error) console.log(`   ${item.error}`);
       if (item.run) console.log(`   run ${item.run.ordinal} ${item.run.status} on ${item.run.instance}, requested ${item.run.requested}${item.run.completed ? `, done ${item.run.completed}` : ""}`);
       if (item.run?.failure) console.log(`   failure: ${clip(JSON.stringify(item.run.failure), 300)}`);
       if (item.lastMessage) console.log(`   ${item.lastMessage.at}: ${item.lastMessage.text}`);
-      for (const pr of item.pullRequests ?? []) console.log(`   PR ${pr.url} ${pr.state ?? ""}`);
+      for (const pr of item.pullRequests ?? []) console.log(`   PR ${pr.url} ${pr.state ?? ""}${pr.source ? ` (${pr.source})` : ""}`);
     } else console.log(Object.values(item).join(" | "));
   }
 }
