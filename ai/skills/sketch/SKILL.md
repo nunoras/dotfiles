@@ -6,9 +6,10 @@ description: Build a design sketch as one HTML board, the page on the right and 
 # Sketch
 
 A sketch is one HTML file built from `board.html` in this folder.
-The right side shows the whole page or section under discussion.
+The right side shows one slide at a time: the screen or state a decision changes.
 The left side lists each open decision as a code and its option letters.
-Clicking a letter changes the page at once, and the parts it changed get an outline and a code tag such as `O3-B` for 1.5 seconds.
+Clicking a decision or a letter shows that decision's slide and scrolls to the part it changes.
+A letter changes the page at once, with no outline or tag, so the user compares options by switching between them.
 
 ## Build one
 
@@ -26,12 +27,16 @@ Clicking a letter changes the page at once, and the parts it changed get an outl
 4. Replace the contents of `<template id="sketch-page">` with the page: its own `<style>` and its markup.
    It renders in an iframe, so its CSS never touches the board.
    Build the whole page or section, not a fragment, so each option is seen in place.
+   Split it into slides: wrap each screen or state in an element with `data-slide="O1 O2"`, naming every decision it shows.
+   One slide per decision is the default; a slide may serve several decisions that change the same screen.
+   Never put `data-when` on a slide element itself.
+   A board with no `data-slide` shows everything at once.
 5. Wire each option into the page:
    - `data-when="O3=A"` shows an element only for that option.
      `O3=A,B` matches either; `O3=A O4=B` needs both.
    - The iframe's `<html>` carries `data-o3="A"` for every decision, so CSS can change a style per option: `[data-o4=B] .notice{background:#fbeedd}`.
-   - `data-touch="O4"` marks an element a CSS rule changes, so it gets the tag when `O4` switches.
-     Elements with `data-when` are tagged without it.
+   - `data-touch="O4"` marks an element a CSS rule changes, so the slide scrolls to it when `O4` is picked.
+     Elements with `data-when` are found without it.
 6. Serve the folder so it outlives the session, and share it on the tailnet:
    ```
    systemd-run --user --unit=sketch-<name> python -m http.server <port> --bind 127.0.0.1 --directory <folder>
@@ -47,7 +52,7 @@ Clicking a letter changes the page at once, and the parts it changed get an outl
    ```
    On Windows, or for a fixed or phone viewport, do not use `--window-size`.
    Capture through a CDP harness (`msedge` on Windows) that sets device metrics and touch emulation.
-   A red "Sketch error" in the top bar means a `data-when` or `data-touch` names a decision or option that does not exist.
+   A red "Sketch error" in the top bar means a `data-when`, `data-touch` or `data-slide` names a decision or option that does not exist.
    Render the recommended option of every decision at least once.
 
 ## Taking picks back
