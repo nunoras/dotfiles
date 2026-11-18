@@ -73,15 +73,14 @@ async function sendFile(folder, request, response) {
 
 export function serve(folderPath, port) {
   const folder = resolve(folderPath);
-  const server = createServer((request, response) => {
-    const isPicks = request.method === "POST" && request.url.split("?")[0].endsWith("/picks");
-    const isRead = request.method === "GET" || request.method === "HEAD";
-    const handled = isPicks
-      ? savePicks(folder, request, response)
-      : isRead
-        ? sendFile(folder, request, response)
-        : Promise.resolve(response.writeHead(405).end());
-    handled.catch(() => response.writeHead(500).end());
+  const server = createServer(async (request, response) => {
+    try {
+      if (request.method === "POST" && request.url.split("?")[0].endsWith("/picks")) await savePicks(folder, request, response);
+      else if (request.method === "GET" || request.method === "HEAD") await sendFile(folder, request, response);
+      else response.writeHead(405).end();
+    } catch {
+      response.writeHead(500).end();
+    }
   });
   return new Promise((ready) => server.listen(port, "127.0.0.1", () => ready(server)));
 }

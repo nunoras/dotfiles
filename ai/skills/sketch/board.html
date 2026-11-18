@@ -207,7 +207,7 @@ function lock(d){
   const at=open().indexOf(d);
   locks[d.id]=pick[d.id];
   const left=open();
-  const keep=shown!==d.id&&left.some(x=>x.id===shown);
+  const keep=left.some(x=>x.id===shown);
   go(keep?shown:left[Math.min(at,left.length-1)]?.id??d.id);
   if(!left.length)send();
 }
