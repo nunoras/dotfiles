@@ -1,10 +1,10 @@
 <!doctype html>
-<html lang="en"><head><meta charset="utf-8"><title>Sketch</title>
+<html lang="en"><head><meta charset="utf-8"><meta name="viewport" content="width=device-width,initial-scale=1"><title>Sketch</title>
 <style>
 :root{--bg:#f6f4f1;--panel:#fff;--fg:#1d1b19;--soft:#6b6560;--line:#e6e1db;--bad:#b3261e;font-family:Inter,system-ui,sans-serif}
 *{box-sizing:border-box}html,body{margin:0;height:100%}
-body{display:grid;grid-template-columns:260px 1fr;background:var(--bg);color:var(--fg);font-size:13px}
-aside{background:var(--panel);border-right:1px solid var(--line);display:flex;flex-direction:column;min-height:0}
+body{display:grid;grid-template-columns:260px 1fr;height:100dvh;background:var(--bg);color:var(--fg);font-size:13px}
+aside{background:var(--panel);border-right:1px solid var(--line);display:flex;flex-direction:column;min-height:0;min-width:0}
 .list{flex:1;overflow:auto;padding:10px 0}
 .dec{padding:7px 14px}
 .dec.focus{background:#f3f0ec}
@@ -25,23 +25,40 @@ aside{background:var(--panel);border-right:1px solid var(--line);display:flex;fl
 .lrow button{visibility:hidden;border:none;background:none;color:var(--soft);cursor:pointer;font-size:11px;padding:0}
 .lrow:hover button{visibility:visible}
 .foot{padding:8px 14px;border-top:1px solid var(--line);display:flex;gap:8px;align-items:center;font-size:12px;color:var(--soft)}
-.foot button{border:none;background:none;font:inherit;color:var(--fg);cursor:pointer;padding:0;text-decoration:underline}
+.foot button{border:none;background:none;font:inherit;color:var(--fg);cursor:pointer;padding:0;text-decoration:underline;white-space:nowrap}
 .foot span{flex:1;white-space:nowrap;overflow:hidden;text-overflow:ellipsis}
+.foot .keys{flex:none}
 .tip{position:fixed;z-index:20;max-width:280px;background:var(--fg);color:#fff;font-size:12px;line-height:1.35;padding:6px 8px;border-radius:6px;pointer-events:none;display:none}
 main{display:flex;flex-direction:column;min-height:0;min-width:0}
-.bar{display:flex;flex-wrap:wrap;gap:4px 12px;padding:8px 16px;font-size:12px;color:var(--soft);border-bottom:1px solid var(--line)}
+.bar{display:flex;flex-wrap:wrap;gap:2px 8px;padding:8px 16px;font-size:12px;line-height:1.35;color:var(--soft);border-bottom:1px solid var(--line)}
 .bar b{color:var(--fg);font-family:ui-monospace,monospace}
-.bar .err{color:var(--bad);font-weight:600}
+.bar .lab{color:var(--fg)}
+.bar .err{color:var(--bad);font-weight:600;flex-basis:100%}
 body.peek .bar{background:#fbeedd}
 .frame{flex:1;overflow:auto;display:flex;justify-content:center;align-items:flex-start}
 iframe{border:none;background:#fff;width:100%;height:100%}
 .frame.fixed iframe{margin:24px;box-shadow:0 1px 4px #0002;flex:none}
+@media (max-width:700px){
+body{grid-template-columns:1fr;grid-template-rows:1fr auto}
+main{order:1}
+aside{order:2;border-right:none;border-top:1px solid var(--line)}
+.list{flex:none;display:flex;position:relative;overflow-x:auto;overflow-y:hidden;scroll-snap-type:x mandatory;scrollbar-width:none;padding:0}
+.list::after{content:"";flex:0 0 12%}
+.dec{flex:0 0 88%;min-width:0;scroll-snap-align:start;padding:10px 14px}
+.dec.focus{background:none}
+.dec:not(.focus){opacity:.4}
+.q{white-space:normal}
+.opt{min-width:44px;height:40px;font-size:14px}
+.locked{max-height:64px;overflow:auto}
+.frame.fixed iframe{margin:0;width:100%!important;height:100%!important;box-shadow:none}
+}
+@media (hover:none){.lock,.lrow button{visibility:visible}.foot .keys{display:none}}
 </style></head>
 <body>
 <aside>
   <div class="list" id="list"></div>
   <div class="locked" id="locked" hidden></div>
-  <div class="foot"><button id="copy">Copy picks</button><span id="copied"></span><span title="Up/Down decision. Left/Right or 1-9 option. L lock. Hold Space to flip back to the previous option.">keys</span></div>
+  <div class="foot"><button id="send">Send picks</button><span id="sent"></span><span class="keys" title="Up/Down decision. Left/Right or 1-9 option. L lock. Hold Space to flip back to the previous option.">keys</span></div>
 </aside>
 <main>
   <div class="bar" id="bar"></div>
@@ -93,39 +110,59 @@ body{margin:0;font-family:system-ui,sans-serif;background:#f6f4f1;color:#1d1b19}
 </div>
 </template>
 
+
 <script>
 const CFG=JSON.parse(document.getElementById('sketch-config').textContent);
 const DEC=CFG.decisions;
+const byId=Object.fromEntries(DEC.map(d=>[d.id,d]));
 document.title=CFG.title||'Sketch';
 const KEY='sketch:'+location.pathname+':'+(CFG.title||'');
-const saved=JSON.parse(localStorage.getItem(KEY)||'{}');
-const fixedLocks=Object.fromEntries(DEC.filter(d=>d.locked).map(d=>[d.id,d.locked]));
-const pick={...Object.fromEntries(DEC.map(d=>[d.id,d.rec||d.options[0].k])),...(saved.pick||{}),...fixedLocks};
-const locks={...(saved.locks||{}),...fixedLocks};
-const prev={};
-let focus=0,peeking=null;
 const $=id=>document.getElementById(id);
-const view=$('view'),tip=$('tip');
+const view=$('view'),tip=$('tip'),list=$('list');
+const narrow=matchMedia('(max-width:700px)'),touch=matchMedia('(hover:none)');
+const hasOption=(d,k)=>d.options.some(o=>o.k===k);
+const known=picks=>Object.fromEntries(Object.entries(picks||{}).filter(([id,k])=>byId[id]&&hasOption(byId[id],k)));
+const fromHash=()=>{const p=new URLSearchParams(location.hash.slice(1));return{pick:known(Object.fromEntries(p)),at:byId[p.get('at')]?p.get('at'):null}};
+const saved=JSON.parse(localStorage.getItem(KEY)||'{}');
+const linked=fromHash();
+const fixedLocks=Object.fromEntries(DEC.filter(d=>d.locked).map(d=>[d.id,d.locked]));
+const locks={...known(saved.locks),...fixedLocks};
+const pick={...Object.fromEntries(DEC.map(d=>[d.id,d.rec||d.options[0].k])),...known(saved.pick),...linked.pick,...locks};
+const prev={};
 const errors=[];
-const save=()=>localStorage.setItem(KEY,JSON.stringify({pick,locks}));
 const open=()=>DEC.filter(d=>!locks[d.id]);
 const label=(d,k)=>d.options.find(o=>o.k===k)?.label??'?';
-
+const el=(tag,cls,text)=>{const e=document.createElement(tag);e.className=cls;e.textContent=text;return e};
+let shown=linked.at||open().find(d=>d.id===saved.at)?.id||open()[0]?.id||DEC[0]?.id;
+let focus=0,peeking=null,settle;
 
 if(CFG.viewport){$('frame').classList.add('fixed');view.style.width=CFG.viewport.width+'px';view.style.height=CFG.viewport.height+'px'}
-view.srcdoc=`<!doctype html><html><head><meta charset="utf-8"></head><body>${$('sketch-page').innerHTML}</body></html>`;
-view.onload=()=>{validate();apply();render();show(open()[0]?.id??DEC[0]?.id)};
+view.srcdoc=`<!doctype html><html><head><meta charset="utf-8"><meta name="viewport" content="width=device-width,initial-scale=1"></head><body>${$('sketch-page').innerHTML}</body></html>`;
+view.onload=()=>{validate();focusShown();render();apply();show(shown)};
 
+function save(){
+  localStorage.setItem(KEY,JSON.stringify({pick,locks,at:shown}));
+  history.replaceState(null,'','#'+new URLSearchParams({...pick,at:shown}));
+}
+function focusShown(){const i=open().findIndex(d=>d.id===shown);if(i>=0)focus=i}
+function go(id){shown=id;focusShown();save();render();apply();show(id)}
 function parseWhen(s){return s.trim().split(/\s+/).map(c=>{const[id,vals]=c.split('=');return{id,vals:(vals||'').split(',')}})}
 function validate(){
   const doc=view.contentDocument;
-  const byId=Object.fromEntries(DEC.map(d=>[d.id,d]));
+  const used=new Set();
+  const css=[...doc.querySelectorAll('style')].map(s=>s.textContent).join('\n');
+  for(const[,attr,k]of css.matchAll(/\[data-([\w-]+)\s*=\s*["']?(\w+)["']?\s*\]/g))used.add(attr.toLowerCase()+'='+k);
   doc.querySelectorAll('[data-when]').forEach(el=>parseWhen(el.dataset.when).forEach(({id,vals})=>{
     if(!byId[id])errors.push(`data-when names unknown ${id}`);
-    else vals.forEach(v=>{if(!byId[id].options.some(o=>o.k===v))errors.push(`data-when names unknown ${id}-${v}`)});
+    else vals.forEach(v=>{if(hasOption(byId[id],v))used.add(id.toLowerCase()+'='+v);else errors.push(`data-when names unknown ${id}-${v}`)});
   }));
   doc.querySelectorAll('[data-touch]').forEach(el=>el.dataset.touch.split(/\s+/).forEach(id=>{if(!byId[id])errors.push(`data-touch names unknown ${id}`)}));
   doc.querySelectorAll('[data-slide]').forEach(el=>el.dataset.slide.split(/\s+/).forEach(id=>{if(!byId[id])errors.push(`data-slide names unknown ${id}`)}));
+  for(const d of DEC){
+    for(const k of[d.rec,d.locked])if(k&&!hasOption(d,k))errors.push(`${d.id} names unknown option ${k}`);
+    const same=d.options.filter(o=>!used.has(d.id.toLowerCase()+'='+o.k)).map(o=>`${d.id}-${o.k}`);
+    if(!d.locked&&same.length>1)errors.push(`${same.join(' and ')} look the same`);
+  }
 }
 function apply(){
   const doc=view.contentDocument;if(!doc?.body)return;
@@ -133,66 +170,101 @@ function apply(){
   doc.querySelectorAll('[data-when]').forEach(el=>{
     el.style.display=parseWhen(el.dataset.when).every(({id,vals})=>vals.includes(pick[id]))?'':'none';
   });
-  $('bar').innerHTML=(errors.length?`<span class="err">Sketch error: ${[...new Set(errors)].join('; ')}</span>`:'')+
-    DEC.map(d=>`<span><b>${d.id}-${pick[d.id]}</b> ${label(d,pick[d.id])}${locks[d.id]?' (locked)':''}</span>`).join('');
+  const bar=$('bar'),d=byId[shown];
+  bar.replaceChildren();
+  if(errors.length)bar.append(el('span','err','Sketch error: '+[...new Set(errors)].join('; ')));
+  if(!d)return;
+  const k=pick[d.id];
+  bar.append(el('b','',`${d.id}-${k}`),el('span','lab',label(d,k)+(d.rec===k?' (r)':'')+(locks[d.id]?' (locked)':'')),el('span','',d.options.find(o=>o.k===k)?.pc||''));
 }
 function touched(doc,id){
   return [...doc.querySelectorAll('[data-when],[data-touch]')].filter(el=>
     (el.dataset.when&&parseWhen(el.dataset.when).some(w=>w.id===id))||(el.dataset.touch||'').split(/\s+/).includes(id));
 }
+function inView(el){
+  const r=el.getBoundingClientRect(),h=view.contentWindow.innerHeight;
+  return (r.top>=0&&r.bottom<=h)||(r.top<=0&&r.bottom>=h);
+}
 function show(id){
   const doc=view.contentDocument;if(!doc?.body||!id)return;
   const slides=[...doc.querySelectorAll('[data-slide]')];
   const hit=slides.filter(s=>s.dataset.slide.split(/\s+/).includes(id));
-  slides.forEach(s=>{s.style.display=hit.length&&!hit.includes(s)?'none':''});
+  let slideChanged=false;
+  slides.forEach(s=>{
+    const display=hit.length&&!hit.includes(s)?'none':'';
+    if(s.style.display!==display){s.style.display=display;slideChanged=true}
+  });
   const first=touched(doc,id).find(el=>el.getClientRects().length>0);
-  if(first)first.scrollIntoView({block:'center'});else doc.scrollingElement.scrollTop=0;
+  if(first&&(slideChanged||!inView(first)))first.scrollIntoView({block:'center'});
+  else if(!first&&slideChanged)doc.scrollingElement.scrollTop=0;
 }
 function choose(d,k){
-  if(pick[d.id]===k){show(d.id);return}
-  prev[d.id]=pick[d.id];pick[d.id]=k;save();apply();render();show(d.id);
+  if(pick[d.id]!==k){prev[d.id]=pick[d.id];pick[d.id]=k}
+  go(d.id);
 }
-function lock(d){hideTip();locks[d.id]=pick[d.id];save();render();apply()}
-function showTip(el,text){tip.textContent=text;tip.style.display='block';const r=el.getBoundingClientRect();tip.style.left=Math.min(r.left,innerWidth-290)+'px';tip.style.top=(r.bottom+6)+'px'}
+function lock(d){
+  hideTip();
+  const at=open().indexOf(d);
+  locks[d.id]=pick[d.id];
+  const left=open();
+  const keep=shown!==d.id&&left.some(x=>x.id===shown);
+  go(keep?shown:left[Math.min(at,left.length-1)]?.id??d.id);
+  if(!left.length)send();
+}
+function picksLine(){
+  const l=DEC.filter(d=>locks[d.id]&&!d.locked).map(d=>`${d.id}-${locks[d.id]}`);
+  const o=open().map(d=>`${d.id}-${pick[d.id]}`);
+  return `Locked: ${l.join(', ')||'none'}. Leaning: ${o.join(', ')||'none'}.`;
+}
+function send(){
+  const txt=picksLine();
+  navigator.clipboard?.writeText(txt).catch(()=>{});
+  fetch('picks',{method:'POST',body:txt}).then(r=>r.ok,()=>false).then(ok=>{$('sent').textContent=(ok?'Sent: ':'Copied: ')+txt});
+}
+function showTip(el,text){if(touch.matches)return;tip.textContent=text;tip.style.display='block';const r=el.getBoundingClientRect();tip.style.left=Math.min(r.left,innerWidth-290)+'px';tip.style.top=(r.bottom+6)+'px'}
 function hideTip(){tip.style.display='none'}
 function render(){
   const os=open();focus=Math.min(focus,Math.max(0,os.length-1));
-  $('list').innerHTML='';
+  list.innerHTML='';
   os.forEach((d,i)=>{
     const el=document.createElement('div');el.className='dec'+(i===focus?' focus':'');
     el.innerHTML=`<div class="dec-top"><span class="code">${d.id}</span><span class="q"></span><button class="lock">lock</button></div><div class="opts"></div>`;
-    const q=el.querySelector('.q');q.textContent=d.q;q.onclick=()=>{focus=i;render();show(d.id)};q.onmouseenter=()=>showTip(q,d.q);q.onmouseleave=hideTip;
+    const q=el.querySelector('.q');q.textContent=d.q;q.onclick=()=>go(d.id);q.onmouseenter=()=>showTip(q,d.q);q.onmouseleave=hideTip;
     d.options.forEach(o=>{
       const b=document.createElement('button');b.className='opt'+(pick[d.id]===o.k?' on':'')+(d.rec===o.k?' rec':'');
       b.textContent=o.k;
       b.onmouseenter=()=>showTip(b,`${d.id}-${o.k} ${o.label}${d.rec===o.k?' (r)':''}. ${o.pc||''}`);b.onmouseleave=hideTip;
-      b.onclick=()=>{focus=i;choose(d,o.k)};
+      b.onclick=()=>choose(d,o.k);
       el.querySelector('.opts').append(b);
     });
     el.querySelector('.lock').onclick=()=>lock(d);
-    $('list').append(el);
+    list.append(el);
   });
+  if(narrow.matches)list.scrollLeft=list.children[focus]?.offsetLeft??0;
   const ld=DEC.filter(d=>locks[d.id]);
   $('locked').hidden=!ld.length;$('locked').innerHTML='';
   ld.forEach(d=>{
     const r=document.createElement('div');r.className='lrow';
     r.innerHTML=`<span class="code">${d.id}-${locks[d.id]}</span><span class="v"></span>${d.locked?'':'<button>unlock</button>'}`;
-    r.querySelector('.v').textContent=label(d,locks[d.id]);r.querySelector('.v').onclick=()=>show(d.id);
-    r.querySelector('button')?.addEventListener('click',()=>{delete locks[d.id];save();render();apply()});
+    r.querySelector('.v').textContent=label(d,locks[d.id]);r.querySelector('.v').onclick=()=>go(d.id);
+    r.querySelector('button')?.addEventListener('click',()=>{delete locks[d.id];go(d.id)});
     $('locked').append(r);
   });
 }
-$('copy').onclick=()=>{
-  const l=DEC.filter(d=>locks[d.id]&&!d.locked).map(d=>`${d.id}-${locks[d.id]}`);
-  const o=open().map(d=>`${d.id}-${pick[d.id]}`);
-  const txt=`Locked: ${l.join(', ')||'none'}. Leaning: ${o.join(', ')||'none'}.`;
-  navigator.clipboard?.writeText(txt);$('copied').textContent=txt;
-};
+function onSwipe(){
+  if(!narrow.matches)return;
+  clearTimeout(settle);
+  settle=setTimeout(()=>{
+    const x=list.scrollLeft,os=open();
+    const nearest=[...list.children].reduce((best,card,i,cards)=>Math.abs(card.offsetLeft-x)<Math.abs(cards[best].offsetLeft-x)?i:best,0);
+    if(os[nearest]&&nearest!==focus)go(os[nearest].id);
+  },120);
+}
 function onKey(e){
   const os=open(),d=os[focus];if(!d)return;
   const idx=d.options.findIndex(o=>o.k===pick[d.id]),n=d.options.length;
-  if(e.key==='ArrowDown'){focus=Math.min(os.length-1,focus+1);render();show(os[focus].id);e.preventDefault()}
-  else if(e.key==='ArrowUp'){focus=Math.max(0,focus-1);render();show(os[focus].id);e.preventDefault()}
+  if(e.key==='ArrowDown'){go(os[Math.min(os.length-1,focus+1)].id);e.preventDefault()}
+  else if(e.key==='ArrowUp'){go(os[Math.max(0,focus-1)].id);e.preventDefault()}
   else if(e.key==='ArrowRight')choose(d,d.options[(idx+1)%n].k);
   else if(e.key==='ArrowLeft')choose(d,d.options[(idx-1+n)%n].k);
   else if(/^[1-9]$/.test(e.key)&&d.options[e.key-1])choose(d,d.options[e.key-1].k);
@@ -200,7 +272,23 @@ function onKey(e){
   else if(e.key===' '&&!e.repeat&&prev[d.id]){e.preventDefault();peeking={id:d.id,back:pick[d.id]};pick[d.id]=prev[d.id];document.body.classList.add('peek');apply()}
 }
 function onKeyUp(e){if(e.key===' '&&peeking){pick[peeking.id]=peeking.back;peeking=null;document.body.classList.remove('peek');apply()}}
+function reloadWhenFileChanges(){
+  if(!location.protocol.startsWith('http'))return;
+  let seen=null;
+  setInterval(async()=>{
+    if(document.hidden)return;
+    const r=await fetch(location.pathname,{method:'HEAD',cache:'no-store'}).catch(()=>null);
+    const version=r?.ok&&(r.headers.get('etag')||r.headers.get('last-modified'));
+    if(!version)return;
+    if(seen&&version!==seen)location.reload();
+    seen=version;
+  },1500);
+}
+$('send').onclick=send;
+list.addEventListener('scroll',onSwipe);
 addEventListener('keydown',onKey);addEventListener('keyup',onKeyUp);
+addEventListener('hashchange',()=>{const h=fromHash();Object.assign(pick,h.pick,locks);go(h.at||shown)});
 view.addEventListener('load',()=>{view.contentWindow.addEventListener('keydown',onKey);view.contentWindow.addEventListener('keyup',onKeyUp)});
+reloadWhenFileChanges();
 </script>
 </body></html>
