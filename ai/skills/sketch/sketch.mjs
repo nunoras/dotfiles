@@ -41,7 +41,9 @@ async function savePicks(folder, request, response) {
     response.writeHead(400).end();
     return;
   }
-  await writeFile(join(folder, PICKS_FILE), picks + "\n");
+  const arriving = join(folder, PICKS_FILE + ".new");
+  await writeFile(arriving, picks + "\n");
+  await rename(arriving, join(folder, PICKS_FILE));
   response.writeHead(204).end();
 }
 
