@@ -67,6 +67,17 @@ watcher from `babysit-pr`, so something wakes you when the PR changes. In T3
 Code that is `watch_pull_request`. If you stop before the merge, call
 `unwatch_pull_request` first.
 
+Run a local check that ends in about 10 minutes in the foreground, with a long
+timeout. Never end your turn to wait on your own background job: the wake-up
+can fail to start a new turn, and the thread then sits idle. Only a longer run,
+such as a full e2e suite, goes to the background, and you then wait on it in the
+same turn. If the session restarts, run the job again. Do not trust its partial
+log.
+
+When a background job writes its exit code into a log, keep the real code:
+`cmd > log 2>&1; s=$?; echo "exit $s" >> log; exit $s`. The plain
+`echo "exit $?" >> log` makes the task always report exit 0.
+
 ## Proof
 
 Proof is evidence you observed yourself in this session: command output, a
@@ -74,7 +85,10 @@ reproduction, a screenshot. Use the most direct proof the change allows:
 
 - Reproduce the original failure, apply the fix, then watch the same
   reproduction pass.
-- Run the checks that the repo's CI runs (typecheck, lint, tests).
+- Run the checks that the repo's CI runs (typecheck, lint, tests). If the base
+  branch has no PR CI, run only the tests and probes that cover the files you
+  touched, and leave the full gate to one run on the integrated branch. Run a
+  check again only when the tree changed in a path that check reads.
 - Add one focused test that fails without the fix, when the behavior has none
   and the repo has a test setup.
 - For UI and runtime behavior, run the app and look at the change. Green mocked
@@ -97,8 +111,10 @@ Full confidence means all of these are true on the latest commit:
 - No human review still requests changes.
 - The branch is up to date with the default branch, and GitHub reports it as
   mergeable.
-- Each failure that also happens on base has a filed issue that the report
-  links, and a quarantine entry if the repo has one. A mention is not enough.
+- Each failure that also happens on base is accounted for. If it is already in
+  the quarantine or in an open issue, link that; do not run base again to prove
+  it. Only a new failure needs one base run on an idle machine, a filed issue,
+  and a quarantine entry if the repo has one. A mention is not enough.
 
 Merge with the method the repo uses. Check the allowed methods and recent merged
 PRs. If the repo uses a merge queue or auto-merge, stay until GitHub reports the

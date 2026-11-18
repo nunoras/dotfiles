@@ -88,7 +88,9 @@ small cost is a nit, whatever label it came with.
 - Disagree: say why, with evidence (file:line, test, output).
 - Out of scope or nit: decline in one line. List as follow-up.
 
-Update the ledger. Re-run checks and `git diff --shortstat <base>`. If
+Update the ledger. Re-run only the checks that cover the files this round
+changed, and `git diff --shortstat <base>`. The full gate runs once, before
+merge. If
 review grew the diff, cut first. Do not agree just to end the loop.
 
 ## 4. Next round
