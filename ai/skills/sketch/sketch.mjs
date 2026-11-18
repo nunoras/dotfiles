@@ -1,12 +1,14 @@
 #!/usr/bin/env node
 import { createServer } from "node:http";
 import { createReadStream, watchFile, unwatchFile } from "node:fs";
-import { readFile, rm, stat, writeFile } from "node:fs/promises";
+import { readFile, rename, rm, stat, writeFile } from "node:fs/promises";
 import { extname, join, resolve, sep } from "node:path";
 import { fileURLToPath } from "node:url";
 
 const PICKS_FILE = "picks.txt";
 const MAX_PICKS_BYTES = 10_000;
+const PICK_LIST = String.raw`(none|\w+-\w+(, \w+-\w+)*)`;
+const PICKS_LINE = new RegExp(`^Locked: ${PICK_LIST}\\. Leaning: ${PICK_LIST}\\.$`);
 const CONTENT_TYPES = {
   ".html": "text/html; charset=utf-8",
   ".css": "text/css; charset=utf-8",
@@ -35,7 +37,7 @@ async function readBody(request) {
 
 async function savePicks(folder, request, response) {
   const picks = await readBody(request);
-  if (!picks) {
+  if (!picks || !PICKS_LINE.test(picks)) {
     response.writeHead(400).end();
     return;
   }
@@ -83,10 +85,12 @@ export function serve(folderPath, port) {
 
 export function waitForPicks(folderPath, pollMs = 500) {
   const file = join(resolve(folderPath), PICKS_FILE);
+  const taken = file + ".taken";
   const takePicks = async () => {
-    const picks = await readFile(file, "utf8").catch(() => null);
-    if (picks === null) return null;
-    await rm(file);
+    const isTaken = await rename(file, taken).then(() => true, () => false);
+    if (!isTaken) return null;
+    const picks = await readFile(taken, "utf8");
+    await rm(taken);
     return picks.trim();
   };
   return new Promise((done, failed) => {

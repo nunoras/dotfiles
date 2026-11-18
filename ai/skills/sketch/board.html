@@ -181,9 +181,9 @@ function touched(doc,id){
   return [...doc.querySelectorAll('[data-when],[data-touch]')].filter(el=>
     (el.dataset.when&&parseWhen(el.dataset.when).some(w=>w.id===id))||(el.dataset.touch||'').split(/\s+/).includes(id));
 }
-function inView(el){
-  const r=el.getBoundingClientRect(),h=view.contentWindow.innerHeight;
-  return (r.top>=0&&r.bottom<=h)||(r.top<=0&&r.bottom>=h);
+function offScreen(el){
+  const r=el.getBoundingClientRect();
+  return r.bottom<=0||r.top>=view.contentWindow.innerHeight;
 }
 function show(id){
   const doc=view.contentDocument;if(!doc?.body||!id)return;
@@ -195,7 +195,7 @@ function show(id){
     if(s.style.display!==display){s.style.display=display;slideChanged=true}
   });
   const first=touched(doc,id).find(el=>el.getClientRects().length>0);
-  if(first&&(slideChanged||!inView(first)))first.scrollIntoView({block:'center'});
+  if(first&&(slideChanged||offScreen(first)))first.scrollIntoView({block:'center'});
   else if(!first&&slideChanged)doc.scrollingElement.scrollTop=0;
 }
 function choose(d,k){
@@ -218,8 +218,9 @@ function picksLine(){
 }
 function send(){
   const txt=picksLine();
-  navigator.clipboard?.writeText(txt).catch(()=>{});
-  fetch('picks',{method:'POST',body:txt}).then(r=>r.ok,()=>false).then(ok=>{$('sent').textContent=(ok?'Sent: ':'Copied: ')+txt});
+  const copied=navigator.clipboard?navigator.clipboard.writeText(txt).then(()=>true,()=>false):Promise.resolve(false);
+  const posted=fetch('picks',{method:'POST',body:txt}).then(r=>r.ok,()=>false);
+  Promise.all([posted,copied]).then(([isSent,isCopied])=>{$('sent').textContent=(isSent?'Sent: ':isCopied?'Copied: ':'Not sent: ')+txt});
 }
 function showTip(el,text){if(touch.matches)return;tip.textContent=text;tip.style.display='block';const r=el.getBoundingClientRect();tip.style.left=Math.min(r.left,innerWidth-290)+'px';tip.style.top=(r.bottom+6)+'px'}
 function hideTip(){tip.style.display='none'}
@@ -275,14 +276,15 @@ function onKeyUp(e){if(e.key===' '&&peeking){pick[peeking.id]=peeking.back;peeki
 function reloadWhenFileChanges(){
   if(!location.protocol.startsWith('http'))return;
   let seen=null;
-  setInterval(async()=>{
-    if(document.hidden)return;
+  const check=async()=>{
     const r=await fetch(location.pathname,{method:'HEAD',cache:'no-store'}).catch(()=>null);
     const version=r?.ok&&(r.headers.get('etag')||r.headers.get('last-modified'));
     if(!version)return;
     if(seen&&version!==seen)location.reload();
     seen=version;
-  },1500);
+  };
+  check();
+  setInterval(()=>{if(!document.hidden)check()},1500);
 }
 $('send').onclick=send;
 list.addEventListener('scroll',onSwipe);
