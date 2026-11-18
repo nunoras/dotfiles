@@ -1,4 +1,5 @@
 #!/usr/bin/env node
+import { randomUUID } from "node:crypto";
 import { createServer } from "node:http";
 import { createReadStream, watchFile, unwatchFile } from "node:fs";
 import { readFile, rename, rm, stat, writeFile } from "node:fs/promises";
@@ -41,9 +42,9 @@ async function savePicks(folder, request, response) {
     response.writeHead(400).end();
     return;
   }
-  const arriving = join(folder, PICKS_FILE + ".new");
+  const arriving = join(folder, `..new`);
   await writeFile(arriving, picks + "\n");
-  await rename(arriving, join(folder, PICKS_FILE));
+  await rename(arriving, join(folder, PICKS_FILE)).finally(() => rm(arriving, { force: true }));
   response.writeHead(204).end();
 }
 
