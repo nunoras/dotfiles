@@ -72,7 +72,7 @@ On a phone the left side becomes a bottom strip: swipe for the next decision, ta
 After you send the board URL, wait for the picks with a background command, so its exit wakes you:
 
 ```
-node <this folder>/sketch.mjs wait <folder>
+node <this folder>/sketch.mjs wait <port>
 ```
 
 It prints the picks and exits when the user presses Send picks or locks the last open decision.
