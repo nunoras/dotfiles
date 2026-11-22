@@ -12,8 +12,9 @@ how explorer: claude:opus@medium
 how explainer: claude:opus@medium
 why investigators, synthesizer: inherit-parent
 reflect tooling, judgment, divergent, synthesizer: inherit-parent
-arena runners: claude:fable@medium, codex:gpt-6.1-sol@medium, grok:grok-4.7@medium, claude:opus@medium
-arena cross-judge pool: codex:gpt-6.1-sol@medium, claude:opus@medium, claude:fable@medium, grok:grok-4.7@medium
+arena runners: claude:fable@medium, codex:gpt-6.1-sol@medium, claude:opus@medium
+arena cross-judge pool: codex:gpt-6.1-sol@medium, claude:opus@medium, claude:fable@medium
 swarm workers: claude:opus@medium
-architect runners: claude:fable@medium, codex:gpt-6.1-sol@medium, grok:grok-4.7@medium, claude:opus@medium
-interrogate reviewers: codex:gpt-6.1-sol@medium, claude:opus@medium, claude:fable@medium, grok:grok-4.7@medium
+architect runners: claude:fable@medium, codex:gpt-6.1-sol@medium, claude:opus@medium
+interrogate reviewers: codex:gpt-6.1-sol@medium, claude:opus@medium, claude:fable@medium
+codex writer sandbox: bounded
