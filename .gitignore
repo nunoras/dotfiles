@@ -16,3 +16,6 @@ Thumbs.db
 
 # Skills Claude Code syncs down from claude.ai into ~/.claude/skills, which links here
 ai/skills/synced/
+
+# Skills a skill manager removed, kept as a local trash folder
+ai/skills/.trash/
