@@ -25,6 +25,7 @@ param(
 
 $ErrorActionPreference = 'Stop'
 $RepoRoot = $PSScriptRoot
+$PrivateRoot = if ($env:DOTFILES_PRIVATE) { $env:DOTFILES_PRIVATE } else { Join-Path (Split-Path $RepoRoot -Parent) 'dotfiles-private' }
 
 # Pause before closing when running in a standalone window (double-click / Run with PowerShell).
 # WT_SESSION is set by Windows Terminal; its absence means this is a fresh throwaway window.
@@ -99,6 +100,23 @@ function Remove-DanglingRepoLinks {
             if ($item.PSIsContainer) { [System.IO.Directory]::Delete($item.FullName, $false) } else { $item.Delete() }
             Write-Host "  remove dangling $($item.FullName) -> $target" -ForegroundColor Yellow
         }
+    }
+}
+
+function Add-PrivateSkillLinks {
+    $skillsRoot = Join-Path $PrivateRoot 'skills'
+    if (-not (Test-Path -LiteralPath $skillsRoot)) {
+        Write-Host "  skip   private skills (no $skillsRoot)" -ForegroundColor DarkGray
+        return
+    }
+    Write-Host "dotfiles: linking private skills from $PrivateRoot" -ForegroundColor Cyan
+    $exclude = Join-Path $RepoRoot '.git\info\exclude'
+    foreach ($skill in Get-ChildItem -LiteralPath $skillsRoot -Directory) {
+        New-RepoSymlink "$RepoRoot\ai\skills\$($skill.Name)" $skill.FullName
+        if ($WhatIfLinks) { continue }
+        $entry = "ai/skills/$($skill.Name)"
+        $listed = if (Test-Path -LiteralPath $exclude) { @(Get-Content -LiteralPath $exclude) } else { @() }
+        if ($listed -notcontains $entry) { Add-Content -LiteralPath $exclude -Value $entry }
     }
 }
 
@@ -331,6 +349,7 @@ Remove-DanglingRepoLinks @(
     "$env:APPDATA\Zed"
 )
 
+Add-PrivateSkillLinks
 Sync-SharedSkills
 
 Write-Host "done." -ForegroundColor Cyan

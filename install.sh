@@ -2,6 +2,7 @@
 set -euo pipefail
 
 repo_root="$(cd "$(dirname "${BASH_SOURCE[0]}")" && pwd -P)"
+private_root="${DOTFILES_PRIVATE:-$(dirname "$repo_root")/dotfiles-private}"
 dry_run=false
 
 usage() {
@@ -75,6 +76,22 @@ remove_dangling_repo_links() {
   done
 }
 
+link_private_skills() {
+  if [ ! -d "$private_root/skills" ]; then
+    say "$dim" "  skip   private skills (no $private_root/skills)"
+    return
+  fi
+  say "$cyan" "dotfiles: linking private skills from $private_root"
+  local exclude="$repo_root/.git/info/exclude" skill name
+  for skill in "$private_root"/skills/*/; do
+    name="$(basename "$skill")"
+    link "$repo_root/ai/skills/$name" "${skill%/}"
+    $dry_run && continue
+    mkdir -p "$(dirname "$exclude")"
+    grep -qxF "ai/skills/$name" "$exclude" 2>/dev/null || printf '%s\n' "ai/skills/$name" >> "$exclude"
+  done
+}
+
 sync_shared_skills() {
   if ! command -v node >/dev/null 2>&1; then
     say "$yellow" "  skip   shared skills (node not found)"
@@ -113,6 +130,7 @@ link "$HOME/.pi/agent/skills"                 "$repo_root/pi/skills"
 
 remove_dangling_repo_links "$HOME/.claude" "$HOME/.claude/hooks" "$HOME/.pi/agent"
 
+link_private_skills
 sync_shared_skills
 
 say "$cyan" "done."

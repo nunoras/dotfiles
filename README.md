@@ -1,9 +1,23 @@
 # dotfiles
 
-Reproducible AI + editor environment across all my machines. One canonical source
-of truth, symlinked into the locations each tool actually reads.
+How I work with coding agents, kept as the config they run on.
+Claude Code, Codex and Pi read the same rules and skills from this repo, on Windows and Linux.
 
-## Philosophy
+## How I work with agents
+
+The rules live in [`ai/AGENTS.md`](ai/AGENTS.md); the skills in [`ai/skills`](ai/skills) carry them out.
+
+- **What I hand over.** Agents write the code.
+  A small change with a settled design goes to one agent as one PR.
+  Bigger work becomes a spec, then tickets, then one agent thread per ticket.
+- **What I keep.** Product calls, design decisions, and anything costly to undo: publishing, spending money, deleting.
+  Agents make reversible calls themselves and list them so I can reverse them.
+- **How the output gets checked.** An agent never claims a check it did not run, and a bug fix starts by reproducing the bug.
+  [`full-send`](ai/skills/full-send/SKILL.md) takes a change to a merged PR only after proof for every change, a review by a model from a different vendor, and every review-bot finding fixed or answered.
+- **How mistakes become rules.** When I correct an agent, the fix goes into a rule or skill in the same session.
+  A correction that keeps coming back becomes a hook instead: [`prose-guard`](ai/scripts/prose-guard.mjs), [`poll-guard`](ai/scripts/poll-guard.mjs) and [`pkill-guard`](ai/scripts/pkill-guard.mjs) block the mistake before the command runs.
+
+## Setup philosophy
 
 - **Windows is home, Linux is supported.** Windows machines run native Windows
   tools (no WSL straddle). Linux boxes get the agent configs through `install.sh`.
@@ -29,7 +43,7 @@ dotfiles/
 │   ├── settings.json              # Claude Code settings (non-secret)
 │   ├── statusline.mjs             # the two-line status line
 │   └── hooks/                     # hooks referenced by settings.json
-├── pi/                            # Pi global config and pi-only skills
+├── pi/                            # Pi global config, extensions and pi-only skills
 └── shell/
     └── Microsoft.PowerShell_profile.ps1   # the "oh-my-zsh" experience, natively
 ```
@@ -61,6 +75,12 @@ Claude Code reads them through `~/.claude/skills` and gets pstack and mattpocock
 - It only touches links it made, tracked in `~/.agents/skills/.dotfiles-skills-sync.json`. Skills other tools install there (like `npx skills add`) are left alone.
 - When two skills share a name, the first one wins: personal skills, then plugins in `enabledPlugins` order. That is why `pstack` comes before `mattpocock-skills` in `claude/settings.json`.
 - Plugin skills get the plugin as a folder prefix, for example `pstack-poteto-mode`.
+
+### Private skills
+
+Skills that are personal or someone else's work live in a separate private repo, `dotfiles-private`, cloned next to this one.
+The installers link each folder in its `skills/` into `ai/skills/` and add it to `.git/info/exclude`, so it never shows up here.
+Set `DOTFILES_PRIVATE` to use another path.
 
 `pi/skills` holds the few skills that only work inside pi (they read pi's sessions or use pi's browser tools), linked to `~/.pi/agent/skills`.
 `ai/skills/synced/` is where Claude Code drops skills synced from claude.ai, and it is gitignored.
