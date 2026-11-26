@@ -119,7 +119,7 @@
   "switchModelsOnFlag": false,
   "autoMode": {
     "environment": [
-      "owner/app is my own private repo. Merging PRs into staging is routine and approved; merging into main deploys and needs my explicit ask."
+      "The FellowStitch app repo is my own private repo. Merging PRs into staging is routine and approved; merging into main deploys and needs my explicit ask."
     ]
   }
 }
