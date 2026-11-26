@@ -175,3 +175,8 @@ oh-my-posh font install        # pick a Nerd Font (e.g. CaskaydiaCove)
 ```
 
 The wiring lives in [`shell/Microsoft.PowerShell_profile.ps1`](shell/Microsoft.PowerShell_profile.ps1).
+
+## License
+
+MIT, see [LICENSE](LICENSE).
+Folders with their own LICENSE file, such as [`ai/skills/cook`](ai/skills/cook), keep that license.
