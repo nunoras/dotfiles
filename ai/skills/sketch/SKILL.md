@@ -99,4 +99,4 @@ Do not add text, headers or help to the menu; the user chose it this bare.
 
 ## In a repo with its own capture recipe
 
-When a repo has a way to capture its real CSS and DOM, such as MyApp's control-app "Sketch from the live app", use that capture as the page inside `sketch-page` and edit only the parts the decisions change.
+When a repo has a way to capture its real CSS and DOM, such as FellowStitch's control-app "Sketch from the live app", use that capture as the page inside `sketch-page` and edit only the parts the decisions change.
